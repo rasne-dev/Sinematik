@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FilmÖnerim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#090910; --surface:#10101a; --surface2:#18182a;
+  --border:rgba(255,255,255,0.08);
+  --accent:#e8b86d; --accent2:#7c6af0;
+  --text:#eeebf0; --muted:#65607a;
+  --danger:#e05555; --success:#55c487;
+  --r:12px;
+  --serif:'DM Serif Display',serif;
+  --sans:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:-250px;left:-250px;width:700px;height:700px;background:radial-gradient(circle,rgba(124,106,240,.07) 0%,transparent 70%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-150px;right:-150px;width:600px;height:600px;background:radial-gradient(circle,rgba(232,184,109,.05) 0%,transparent 70%);pointer-events:none;z-index:0}
+
+/* NAV */
+nav.topnav{position:sticky;top:0;z-index:200;background:rgba(9,9,16,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px}
+.logo{font-family:var(--serif);font-size:20px;color:var(--accent);flex-shrink:0}
+.logo span{color:var(--text)}
+.nav-tabs{display:flex;gap:2px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px;border:1px solid var(--border);flex-shrink:0}
+.nav-tab{padding:5px 13px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:all .2s;border:none;background:none;font-family:var(--sans);white-space:nowrap}
+.nav-tab.active{background:var(--surface2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.nav-tab:hover:not(.active){color:var(--text)}
+.nav-spacer{flex:1}
+.nav-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s}
+.icon-btn:hover{color:var(--text);border-color:rgba(255,255,255,.15)}
+.import-btn{padding:6px 13px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px;font-family:var(--sans);white-space:nowrap}
+.import-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* MAIN */
+main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-index:1}
+
+/* PAGES */
+.page{display:none}
+.page.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* HERO */
+.hero{text-align:center;padding:16px 0 40px}
+.hero h1{font-family:var(--serif);font-size:clamp(30px,5vw,50px);line-height:1.1;margin-bottom:10px;background:linear-gradient(130deg,var(--text) 30%,var(--accent) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:var(--muted);font-size:14px;max-width:400px;margin:0 auto 22px}
+.search-wrap{display:flex;gap:7px;max-width:500px;margin:0 auto}
+.type-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:9px;overflow:hidden;flex-shrink:0}
+.type-btn{padding:0 13px;height:40px;border:none;background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .2s;white-space:nowrap}
+.type-btn.active{background:var(--surface2);color:var(--text)}
+.search-input{flex:1;padding:10px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:var(--sans);outline:none;transition:border-color .2s;min-width:0}
+.search-input:focus{border-color:var(--accent2)}
+.search-input::placeholder{color:var(--muted)}
+.search-btn{padding:10px 18px;border-radius:9px;background:var(--accent2);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:opacity .2s;flex-shrink:0}
+.search-btn:hover{opacity:.85}
+
+/* CHIPS */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
+.chip{padding:5px 13px;border-radius:50px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:all .18s;user-select:none}
+.chip.active{border-color:var(--accent);color:var(--accent);background:rgba(232,184,109,.08)}
+.chip:hover:not(.active){border-color:rgba(255,255,255,.14);color:var(--text)}
+
+/* SECTION TITLE */
+.section-title{font-family:var(--serif);font-size:20px;margin-bottom:14px;display:flex;align-items:baseline;gap:10px}
+.section-title small{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:400}
+
+/* CARD GRID */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:13px;margin-bottom:44px}
+
+.card{border-radius:var(--r);overflow:hidden;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative;animation:cardIn .3s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,.5);border-color:rgba(255,255,255,.11)}
+.card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:var(--surface2)}
+.card-ph{width:100%;aspect-ratio:2/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--muted)}
+.card-body{padding:9px 11px 11px}
+.card-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--muted);display:flex;gap:6px}
+.card-score{color:var(--accent);font-weight:600}
+
+.badge{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;color:var(--accent)}
+.badge-u{position:absolute;top:7px;left:7px;background:var(--accent2);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#fff}
+.badge-w{position:absolute;bottom:50px;right:7px;background:rgba(232,184,109,.12);border:1px solid rgba(232,184,109,.3);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--accent)}
+
+/* LOADING / EMPTY */
+.loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--muted);font-size:14px;grid-column:1/-1}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent2);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:64px 20px;color:var(--muted);grid-column:1/-1}
+.empty-icon{font-size:42px;margin-bottom:12px}
+.empty h3{font-family:var(--serif);font-size:19px;color:var(--text);margin-bottom:6px}
+.empty p{font-size:13px}
+
+/* RECOMMENDATIONS */
+.rec-row{margin-bottom:36px}
+.rec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.rec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.rec-strip{display:flex;gap:11px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.rec-strip .card{min-width:138px;flex-shrink:0}
+
+/* STATS */
+.stats-row{display:flex;gap:20px;flex-wrap:wrap;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:24px}
+.stat{text-align:center}
+.stat-n{font-family:var(--serif);font-size:26px;color:var(--accent);line-height:1}
+.stat-l{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* RATED LIST */
+.rated-list{display:flex;flex-direction:column;gap:7px}
+.rated-item{display:flex;align-items:center;gap:12px;padding:11px 15px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);transition:border-color .2s}
+.rated-item:hover{border-color:rgba(255,255,255,.1)}
+.rated-thumb{width:42px;height:60px;border-radius:6px;flex-shrink:0;overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted)}
+.rated-thumb img{width:100%;height:100%;object-fit:cover}
+.rated-info{flex:1;min-width:0}
+.rated-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rated-sub{font-size:11px;color:var(--muted);margin-bottom:4px}
+.star-row{display:flex;gap:2px}
+.star{font-size:14px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .1s,transform .1s}
+.star.on{color:var(--accent)}
+.star:hover{transform:scale(1.2)}
+.del-btn{padding:5px 10px;border-radius:7px;flex-shrink:0;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--sans);transition:all .2s}
+.del-btn:hover{border-color:var(--danger);color:var(--danger)}
+
+/* MODALS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:450px;position:relative;max-height:90vh;overflow-y:auto}
+.modal-hd{padding:22px 22px 0}
+.modal-hd h3{font-family:var(--serif);font-size:21px;margin-bottom:5px}
+.modal-hd p{color:var(--muted);font-size:13px;margin-bottom:18px}
+.modal-body{padding:0 22px 22px}
+.modal-close{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:color .2s}
+.modal-close:hover{color:var(--text)}
+
+/* DETAIL MODAL */
+.detail-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;position:relative}
+.detail-backdrop{width:100%;height:190px;object-fit:cover;border-radius:16px 16px 0 0;background:linear-gradient(to bottom,var(--surface2),var(--surface));display:block}
+.detail-bd{padding:20px 22px 26px}
+.detail-title{font-family:var(--serif);font-size:22px;margin-bottom:5px;line-height:1.2}
+.detail-meta{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.detail-overview{font-size:13px;line-height:1.7;color:rgba(238,235,240,.72);margin-bottom:18px;max-height:90px;overflow-y:auto}
+.rate-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px}
+.detail-stars{display:flex;gap:3px;margin-bottom:16px}
+.dstar{font-size:21px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .08s,transform .1s}
+.dstar.on{color:var(--accent)}
+.dstar:hover{transform:scale(1.15)}
+.detail-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+.btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:opacity .2s;border:none}
+.btn-purple{background:var(--accent2);color:#fff}
+.btn-purple:hover{opacity:.85}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:rgba(255,255,255,.2)}
+.btn-gold{background:rgba(232,184,109,.1);border:1px solid rgba(232,184,109,.22);color:var(--accent)}
+.btn-gold:hover{background:rgba(232,184,109,.18)}
+
+/* API KEY MODAL */
+.apikey-input{width:100%;padding:10px 13px;border-radius:9px;margin-bottom:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .2s}
+.apikey-input:focus{border-color:var(--accent2)}
+.apikey-hint{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7}
+.apikey-hint a{color:var(--accent2);text-decoration:none}
+.apikey-hint a:hover{text-decoration:underline}
+
+/* IMPORT */
+.steps{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+.step{display:flex;gap:10px;align-items:flex-start;padding:11px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);font-size:13px;line-height:1.5;color:rgba(238,235,240,.8)}
+.step-n{width:20px;height:20px;border-radius:50%;background:var(--accent2);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;font-size:11px}
+.drop-zone{border:2px dashed var(--border);border-radius:10px;padding:26px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent2);background:rgba(124,106,240,.05)}
+.drop-icon{font-size:26px;margin-bottom:7px}
+.drop-text{font-size:13px;color:var(--muted)}
+.drop-text strong{display:block;color:var(--text);margin-bottom:3px}
+.progress-wrap{margin-bottom:10px;display:none}
+.progress-bar{height:3px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:7px}
+.progress-fill{height:100%;background:var(--accent2);border-radius:2px;transition:width .3s;width:0%}
+.progress-text{font-size:12px;color:var(--muted)}
+.alert{padding:9px 13px;border-radius:8px;font-size:13px;display:none;margin-top:8px}
+.alert-ok{background:rgba(85,196,135,.1);color:var(--success);border:1px solid rgba(85,196,135,.2)}
+.alert-err{background:rgba(224,85,85,.1);color:var(--danger);border:1px solid rgba(224,85,85,.2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 16px;font-size:13px;z-index:1000;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* MOBILE */
+.mobile-nav{display:none}
+@media(max-width:640px){
+  nav.topnav{padding:0 14px;gap:10px}
+  .nav-tabs{display:none}
+  main{padding:18px 14px 80px}
+  .card-grid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
+  .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:rgba(9,9,16,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:200;padding:6px 0 env(safe-area-inset-bottom)}
+  .mtab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0;color:var(--muted);font-size:10px;cursor:pointer;border:none;background:none;font-family:var(--sans);transition:color .2s}
+  .mtab.active{color:var(--accent)}
+  .mtab-icon{font-size:17px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="logo">Film<span>Önerim</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="discover">🔍 Keşfet</button>
+    <button class="nav-tab" data-page="recommendations">✨ Öneriler</button>
+    <button class="nav-tab" data-page="watchlist">🕐 İzle Listesi</button>
+    <button class="nav-tab" data-page="rated">⭐ Puanladıklarım</button>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-actions">
+    <button class="import-btn" onclick="openModal('importModal')">📥 IMDb İçe Aktar</button>
+    <button class="icon-btn" onclick="openSettings()" title="Ayarlar">⚙️</button>
+  </div>
+</nav>
+
+<main>
+  <!-- KEŞFET -->
+  <div id="page-discover" class="page active">
+    <div class="hero">
+      <h1>Sinemanı Keşfet</h1>
+      <p>Film ve dizi puanla, sana özel öneriler al.</p>
+      <div class="search-wrap">
+        <div class="type-toggle">
+          <button class="type-btn active" onclick="setType('movie',this)">Film</button>
+          <button class="type-btn" onclick="setType('tv',this)">Dizi</button>
+        </div>
+        <input class="search-input" id="searchInput" placeholder="Ara..." onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="search-btn" onclick="doSearch()">Ara</button>
+      </div>
+    </div>
+    <div class="chip-row" id="chipRow"></div>
+    <div class="section-title" id="discoverTitle">Popüler Filmler <small></small></div>
+    <div id="discoverGrid" class="card-grid">
+      <div class="loading"><div class="spinner"></div>Yükleniyor...</div>
+    </div>
+  </div>
+
+  <!-- ÖNERİLER -->
+  <div id="page-recommendations" class="page">
+    <div class="section-title" style="margin-bottom:22px">Senin İçin Öneriler</div>
+    <div id="recContent"></div>
+  </div>
+
+  <!-- İZLE LİSTESİ -->
+  <div id="page-watchlist" class="page">
+    <div class="section-title" style="margin-bottom:22px">İzle Listesi <small id="watchCount"></small></div>
+    <div id="watchGrid" class="card-grid"></div>
+  </div>
+
+  <!-- PUANLADIKLARIM -->
+  <div id="page-rated" class="page">
+    <div class="section-title" style="margin-bottom:18px">Puanladıklarım</div>
+    <div class="stats-row" id="statsRow"></div>
+    <div id="ratedList" class="rated-list"></div>
+  </div>
+</main>
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav">
+  <button class="mtab active" data-page="discover"><div class="mtab-icon">🔍</div>Keşfet</button>
+  <button class="mtab" data-page="recommendations"><div class="mtab-icon">✨</div>Öneriler</button>
+  <button class="mtab" data-page="watchlist"><div class="mtab-icon">🕐</div>İzle</button>
+  <button class="mtab" data-page="rated"><div class="mtab-icon">⭐</div>Puanlar</button>
+</nav>
+
+<!-- API KEY MODAL (ilk kurulum) -->
+<div class="overlay" id="apikeyModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>🎬 Hoş geldin!</h3>
+      <p>Başlamak için ücretsiz bir TMDB API anahtarı gerekiyor.</p>
+    </div>
+    <div class="modal-body">
+      <div class="apikey-hint">
+        1. <a href="https://www.themoviedb.org/signup" target="_blank">themoviedb.org</a>'a ücretsiz kayıt ol<br>
+        2. <a href="https://www.themoviedb.org/settings/api" target="_blank">Ayarlar → API</a> sayfasına git<br>
+        3. <strong>API Key (v3 auth)</strong> değerini kopyalayıp yapıştır
+      </div>
+      <input class="apikey-input" id="apikeyInput" placeholder="API anahtarını buraya yapıştır..." onkeydown="if(event.key==='Enter')saveApiKey()">
+      <div class="alert alert-err" id="apikeyError">Geçersiz anahtar — lütfen kontrol et.</div>
+      <button class="btn btn-purple" onclick="saveApiKey()" style="width:100%;margin-top:4px">Devam Et →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+    <div class="modal-hd">
+      <h3>⚙️ Ayarlar</h3>
+      <p>API anahtarını değiştir veya verileri sıfırla.</p>
+    </div>
+    <div class="modal-body">
+      <div class="rate-label" style="margin-bottom:7px">TMDB API Anahtarı</div>
+      <input class="apikey-input" id="settingsKeyInput" placeholder="Yeni anahtar...">
+      <button class="btn btn-purple" onclick="updateApiKey()" style="margin-bottom:22px">Güncelle</button>
+      <div class="rate-label" style="margin-bottom:8px;color:var(--danger)">Tehlikeli Bölge</div>
+      <button class="btn btn-ghost" onclick="clearAll()" style="border-color:var(--danger);color:var(--danger);width:100%">Tüm Verileri Sıfırla</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="overlay" id="importModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('importModal')">✕</button>
+    <div class="modal-hd">
+      <h3>📥 IMDb Puanlarını İçe Aktar</h3>
+      <p>Tüm IMDb puanlarını otomatik olarak eşleştirip içe alır.</p>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+        <div class="step"><div class="step-n">1</div><div>imdb.com → Profilim → <code>Your Ratings</code> → Sağ üst <code>⋮</code> → <strong>Export</strong></div></div>
+        <div class="step"><div class="step-n">2</div><div><code>ratings.csv</code> dosyasını indir</div></div>
+        <div class="step"><div class="step-n">3</div><div>Aşağıya sürükle ya da seç — geri kalanı otomatik</div></div>
+      </div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()"
+           ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="this.classList.remove('over')">
+        <div class="drop-icon">📄</div>
+        <div class="drop-text"><strong>ratings.csv dosyasını sürükle veya seç</strong>IMDb CSV formatı otomatik algılanır</div>
+      </div>
+      <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleFile(this.files[0])">
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-text" id="progressText">İşleniyor...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <div class="alert" id="importAlert"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="detailModal">
+  <div class="detail-modal" id="detailContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ CONFIG ══
+const BASE   = 'https://api.tmdb.org/3';
+const IMG_W  = 'https://image.tmdb.org/t/p/w342';
+const IMG_B  = 'https://image.tmdb.org/t/p/w780';
+
+// ══ STATE ══
+let TMDB_KEY  = ls('fo_key') || '65f268a4c66640ec7e94f674ad9dbceb';
+let ratings   = lsJSON('fo_ratings', {});
+let watchlist = lsJSON('fo_watch', {});
+let metaCache = lsJSON('fo_meta', {});
+
+let currentType   = 'movie';
+let currentGenre  = '';
+let currentSearch = '';
+let currentItem   = null;
+let pendingRating = 0;
+
+// ══ LOCAL STORAGE ══
+function ls(k)         { return localStorage.getItem(k); }
+function lsSet(k,v)    { localStorage.setItem(k, v); }
+function lsJSON(k,def) { try { return JSON.parse(ls(k)) || def; } catch { return def; } }
+function saveAll() {
+  lsSet('fo_ratings',  JSON.stringify(ratings));
+  lsSet('fo_watch',    JSON.stringify(watchlist));
+  lsSet('fo_meta',     JSON.stringify(metaCache));
+}
+
+// ══ API ══
+async function tmdb(path, params = {}) {
+  const url = new URL(BASE + path);
+  url.searchParams.set('api_key', TMDB_KEY);
+  url.searchParams.set('language', 'tr-TR');
+  for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ══ UI HELPERS ══
+function toast(msg, ms = 2600) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ══ API KEY MANAGEMENT ══
+async function saveApiKey() {
+  const key = document.getElementById('apikeyInput').value.trim();
+  if (!key) return;
+  const errEl = document.getElementById('apikeyError');
+  errEl.style.display = 'none';
+  try {
+    const r = await fetch(`${BASE}/movie/popular?api_key=${key}&language=tr-TR`);
+    if (!r.ok) throw new Error();
+    TMDB_KEY = key;
+    lsSet('fo_key', key);
+    closeModal('apikeyModal');
+    loadDiscover();
+  } catch {
+    errEl.style.display = 'block';
+  }
+}
+
+function openSettings() {
+  document.getElementById('settingsKeyInput').value = TMDB_KEY;
+  openModal('settingsModal');
+}
+
+async function updateApiKey() {
+  const key = document.getElementById('settingsKeyInput').value.trim();
+  if (!key) return;
+  try {
+    const r = await fetch(`${BASE}/movie/popular?api_key=${key}`);
+    if (!r.ok) throw new Error();
+    TMDB_KEY = key;
+    lsSet('fo_key', key);
+    closeModal('settingsModal');
+    toast('✓ API anahtarı güncellendi');
+    loadDiscover();
+  } catch {
+    toast('❌ Geçersiz anahtar');
+  }
+}
+
+function clearAll() {
+  if (!confirm('Tüm puanlar, izle listesi ve önbellek silinecek. Emin misin?')) return;
+  ratings = {}; watchlist = {}; metaCache = {};
+  saveAll();
+  closeModal('settingsModal');
+  toast('Veriler temizlendi');
+  loadDiscover();
+}
+
+// ══ NAV ══
+function initNav() {
+  document.querySelectorAll('[data-page]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const page = tab.dataset.page;
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('[data-page]').forEach(t => t.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+      document.querySelectorAll(`[data-page="${page}"]`).forEach(t => t.classList.add('active'));
+      if (page === 'recommendations') loadRecommendations();
+      if (page === 'watchlist')       renderWatchlist();
+      if (page === 'rated')           renderRated();
+    });
+  });
+}
+
+// ══ GENRES ══
+const MOVIE_GENRES = [
+  {id:'',label:'Tümü'},{id:'28',label:'Aksiyon'},{id:'35',label:'Komedi'},
+  {id:'18',label:'Drama'},{id:'27',label:'Korku'},{id:'878',label:'Bilim Kurgu'},
+  {id:'10749',label:'Romantik'},{id:'16',label:'Animasyon'},{id:'53',label:'Gerilim'},
+  {id:'80',label:'Suç'},{id:'10752',label:'Savaş'},
+];
+const TV_GENRES = [
+  {id:'',label:'Tümü'},{id:'10759',label:'Aksiyon'},{id:'35',label:'Komedi'},
+  {id:'18',label:'Drama'},{id:'10765',label:'Bilim Kurgu'},{id:'9648',label:'Gizem'},
+  {id:'10768',label:'Belgesel'},{id:'10762',label:'Çocuk'},
+];
+
+function buildChips() {
+  const genres = currentType === 'movie' ? MOVIE_GENRES : TV_GENRES;
+  const row = document.getElementById('chipRow');
+  row.innerHTML = '';
+  genres.forEach(g => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (g.id === currentGenre ? ' active' : '');
+    c.textContent = g.label;
+    c.onclick = () => {
+      currentGenre = g.id;
+      currentSearch = '';
+      document.getElementById('searchInput').value = '';
+      row.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      loadDiscover();
+    };
+    row.appendChild(c);
+  });
+}
+
+function setType(type, btn) {
+  currentType = type;
+  currentGenre = '';
+  currentSearch = '';
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildChips();
+  loadDiscover();
+}
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  currentSearch = q;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  loadDiscover();
+}
+
+// ══ DISCOVER ══
+async function loadDiscover() {
+  const grid = document.getElementById('discoverGrid');
+  const titleEl = document.getElementById('discoverTitle');
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor...</div>';
+
+  try {
+    let data;
+    if (currentSearch) {
+      data = await tmdb(`/search/${currentType}`, { query: currentSearch, include_adult: false });
+      titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
+    } else if (currentGenre) {
+      data = await tmdb(`/discover/${currentType}`, { with_genres: currentGenre, sort_by: 'popularity.desc' });
+      titleEl.innerHTML = (currentType === 'movie' ? 'Filmler' : 'Diziler') + ' <small></small>';
+    } else {
+      data = await tmdb(`/${currentType}/popular`);
+      titleEl.innerHTML = (currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler') + ' <small></small>';
+    }
+
+    const items = (data.results || []).slice(0, 20);
+    grid.innerHTML = '';
+    if (!items.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>Sonuç bulunamadı</h3><p>Farklı bir şey dene</p></div>';
+      return;
+    }
+    items.forEach((item, i) => {
+      const el = makeCard(item, currentType);
+      el.style.animationDelay = `${i * 25}ms`;
+      grid.appendChild(el);
+    });
+  } catch {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API anahtarını kontrol et (⚙️)</p></div>';
+  }
+}
+
+// ══ CARD FACTORY ══
+function makeCard(item, type) {
+  const title = item.title || item.name || '—';
+  const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
+  const key   = `${type}_${item.id}`;
+  const myR   = ratings[key];
+  const inW   = !!watchlist[key];
+
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.onclick = () => openDetail(item, type);
+
+  const poster = item.poster_path
+    ? `<img src="${IMG_W}${item.poster_path}" alt="${title}" loading="lazy">`
+    : `<div class="card-ph">🎬</div>`;
+
+  el.innerHTML = `
+    ${poster}
+    ${item.vote_average > 0 ? `<div class="badge">⭐ ${item.vote_average.toFixed(1)}</div>` : ''}
+    ${myR ? `<div class="badge-u">★ ${myR}</div>` : ''}
+    ${inW && !myR ? `<div class="badge-w">🕐</div>` : ''}
+    <div class="card-body">
+      <div class="card-name" title="${title}">${title}</div>
+      <div class="card-sub">
+        <span class="card-score">${item.vote_average > 0 ? item.vote_average.toFixed(1) : '—'}</span>
+        <span>${year || '—'}</span>
+      </div>
+    </div>
+  `;
+  return el;
+}
+
+// ══ DETAIL MODAL ══
+function openDetail(item, type) {
+  currentItem   = { item, type };
+  pendingRating = ratings[`${type}_${item.id}`] || 0;
+
+  const title = item.title || item.name || '—';
+  const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
+  const key   = `${type}_${item.id}`;
+  const inW   = !!watchlist[key];
+
+  const stars = Array.from({length:10}, (_,i) => {
+    const n = i + 1;
+    return `<span class="dstar ${n <= pendingRating ? 'on' : ''}"
+      onmouseenter="hoverD(${n})" onmouseleave="resetD()"
+      onclick="clickD(${n})">${n <= pendingRating ? '★' : '☆'}</span>`;
+  }).join('');
+
+  document.getElementById('detailContent').innerHTML = `
+    <button class="modal-close" onclick="closeModal('detailModal')" style="position:absolute;top:12px;right:12px;z-index:10">✕</button>
+    ${item.backdrop_path
+      ? `<img class="detail-backdrop" src="${IMG_B}${item.backdrop_path}" alt="">`
+      : `<div class="detail-backdrop" style="height:100px"></div>`}
+    <div class="detail-bd">
+      <div class="detail-title">${title}</div>
+      <div class="detail-meta">
+        <span>📅 ${year || '?'}</span>
+        <span>⭐ ${item.vote_average > 0 ? item.vote_average.toFixed(1) + '/10' : '—'}</span>
+        <span>${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
+        ${item.original_language ? `<span>🌐 ${item.original_language.toUpperCase()}</span>` : ''}
+      </div>
+      ${item.overview ? `<div class="detail-overview">${item.overview}</div>` : ''}
+      <div class="rate-label">Puanın (1–10)</div>
+      <div class="detail-stars" id="dStars">${stars}</div>
+      <div class="detail-actions">
+        <button class="btn btn-purple" onclick="saveRating()">Kaydet</button>
+        <button class="btn btn-gold" id="watchBtn" onclick="toggleWatch()">
+          ${inW ? '🕐 Listeden Çıkar' : '+ İzle Listesine Ekle'}
+        </button>
+        <button class="btn btn-ghost" onclick="closeModal('detailModal')">Kapat</button>
+      </div>
+    </div>
+  `;
+  openModal('detailModal');
+}
+
+function hoverD(n) {
+  document.querySelectorAll('.dstar').forEach((s,i) => {
+    s.textContent = i < n ? '★' : '☆';
+    s.classList.toggle('on', i < n);
+  });
+}
+function resetD() {
+  document.querySelectorAll('.dstar').forEach((s,i) => {
+    s.textContent = i < pendingRating ? '★' : '☆';
+    s.classList.toggle('on', i < pendingRating);
+  });
+}
+function clickD(n) {
+  pendingRating = n;
+  resetD();
+}
+
+function saveRating() {
+  if (!currentItem) { closeModal('detailModal'); return; }
+  const { item, type } = currentItem;
+  const key = `${type}_${item.id}`;
+  if (pendingRating > 0) {
+    ratings[key] = pendingRating;
+    metaCache[key] = {
+      title: item.title || item.name,
+      poster: item.poster_path,
+      year: (item.release_date || item.first_air_date || '').slice(0, 4),
+      type,
+    };
+    saveAll();
+    toast(`★ ${pendingRating}/10 kaydedildi`);
+  }
+  closeModal('detailModal');
+  loadDiscover();
+}
+
+function toggleWatch() {
+  if (!currentItem) return;
+  const { item, type } = currentItem;
+  const key = `${type}_${item.id}`;
+  const btn = document.getElementById('watchBtn');
+  if (watchlist[key]) {
+    delete watchlist[key];
+    btn.textContent = '+ İzle Listesine Ekle';
+    toast('İzle listesinden çıkarıldı');
+  } else {
+    watchlist[key] = {
+      id: item.id, type,
+      title: item.title || item.name,
+      poster: item.poster_path,
+      year: (item.release_date || item.first_air_date || '').slice(0, 4),
+    };
+    btn.textContent = '🕐 Listeden Çıkar';
+    toast('✓ İzle listesine eklendi');
+  }
+  saveAll();
+}
+
+// ══ WATCHLIST ══
+function renderWatchlist() {
+  const grid  = document.getElementById('watchGrid');
+  const count = document.getElementById('watchCount');
+  const items = Object.entries(watchlist);
+  count.textContent = items.length ? `${items.length} içerik` : '';
+
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🕐</div><h3>İzle listesi boş</h3><p>Film veya dizi detayından "İzle Listesine Ekle" butonuna bas.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  items.forEach(([key, d]) => {
+    const fakeItem = {
+      id: d.id, title: d.title, name: d.title,
+      poster_path: d.poster,
+      release_date: d.year, first_air_date: d.year,
+      vote_average: 0,
+    };
+    const card = makeCard(fakeItem, d.type);
+
+    // Remove button
+    const rm = document.createElement('button');
+    rm.textContent = 'Çıkar';
+    rm.style.cssText = 'position:absolute;bottom:8px;right:8px;padding:3px 8px;border-radius:5px;border:1px solid rgba(224,85,85,.4);background:rgba(224,85,85,.08);color:var(--danger);font-size:10px;cursor:pointer;font-family:var(--sans)';
+    rm.onclick = e => {
+      e.stopPropagation();
+      delete watchlist[key];
+      saveAll();
+      renderWatchlist();
+      toast('İzle listesinden çıkarıldı');
+    };
+    card.appendChild(rm);
+    grid.appendChild(card);
+  });
+}
+
+// ══ RATED PAGE ══
+function renderRated() {
+  const list  = document.getElementById('ratedList');
+  const stats = document.getElementById('statsRow');
+  const keys  = Object.keys(ratings);
+
+  const movies = keys.filter(k => k.startsWith('movie_')).length;
+  const series = keys.filter(k => k.startsWith('tv_')).length;
+  const avg    = keys.length
+    ? (keys.reduce((s,k) => s + ratings[k], 0) / keys.length).toFixed(1)
+    : '—';
+
+  stats.innerHTML = `
+    <div class="stat"><div class="stat-n">${keys.length}</div><div class="stat-l">Toplam</div></div>
+    <div class="stat"><div class="stat-n">${movies}</div><div class="stat-l">Film</div></div>
+    <div class="stat"><div class="stat-n">${series}</div><div class="stat-l">Dizi</div></div>
+    <div class="stat"><div class="stat-n">${avg}</div><div class="stat-l">Ort. Puan</div></div>
+  `;
+
+  if (!keys.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  [...keys].sort((a,b) => ratings[b]-ratings[a]).forEach(key => {
+    const meta   = metaCache[key] || {};
+    const rating = ratings[key];
+    const type   = key.split('_')[0];
+
+    const el = document.createElement('div');
+    el.className = 'rated-item';
+
+    const thumb = meta.poster
+      ? `<div class="rated-thumb"><img src="${IMG_W}${meta.poster}" alt=""></div>`
+      : `<div class="rated-thumb">🎬</div>`;
+
+    const stars = Array.from({length:10}, (_,i) => {
+      const n = i + 1;
+      return `<span class="star ${n <= rating ? 'on' : ''}"
+        onmouseenter="hoverRatedRow(this.parentNode,${n})"
+        onmouseleave="resetRatedRow(this.parentNode,'${key}')"
+        onclick="updateRating('${key}',${n},this.parentNode)">${n <= rating ? '★' : '☆'}</span>`;
+    }).join('');
+
+    el.innerHTML = `
+      ${thumb}
+      <div class="rated-info">
+        <div class="rated-name" title="${meta.title || key}">${meta.title || key}</div>
+        <div class="rated-sub">${meta.year || ''}${meta.year ? ' · ' : ''}${type === 'tv' ? 'Dizi' : 'Film'}</div>
+        <div class="star-row">${stars}</div>
+      </div>
+      <button class="del-btn" onclick="deleteRating('${key}')">Sil</button>
+    `;
+    list.appendChild(el);
+  });
+}
+
+function hoverRatedRow(row, n) {
+  row.querySelectorAll('.star').forEach((s,i) => {
+    s.textContent = i < n ? '★' : '☆';
+    s.classList.toggle('on', i < n);
+  });
+}
+function resetRatedRow(row, key) {
+  const r = ratings[key] || 0;
+  row.querySelectorAll('.star').forEach((s,i) => {
+    s.textContent = i < r ? '★' : '☆';
+    s.classList.toggle('on', i < r);
+  });
+}
+function updateRating(key, n, row) {
+  ratings[key] = n;
+  saveAll();
+  resetRatedRow(row, key);
+  toast(`★ ${n}/10`);
+}
+function deleteRating(key) {
+  delete ratings[key];
+  saveAll();
+  renderRated();
+  toast('Silindi');
+}
+
+// ══ RECOMMENDATIONS ══
+async function loadRecommendations() {
+  const cnt  = document.getElementById('recContent');
+  const keys = Object.keys(ratings);
+
+  if (keys.length < 3) {
+    cnt.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><h3>Öneri için film puanla</h3><p>En az 3 içerik puanladıktan sonra kişisel öneriler burada görünür.</p></div>';
+    return;
+  }
+
+  cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
+
+  // Rated IDs to exclude
+  const ratedIds = new Set(keys.map(k => {
+    const parts = k.split('_');
+    return parts.slice(1).join('_');
+  }));
+
+  // Top rated, sorted, skip unresolved imdb imports
+  const topRated = [...keys]
+    .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'))
+    .sort((a,b) => ratings[b] - ratings[a]);
+
+  const sections = [];
+
+  // 1. Item-based recommendations from top 4 rated
+  for (const key of topRated.slice(0, 4)) {
+    const [type, ...idParts] = key.split('_');
+    const id = idParts.join('_');
+    try {
+      const [recData, itemData] = await Promise.all([
+        tmdb(`/${type}/${id}/recommendations`),
+        tmdb(`/${type}/${id}`),
+      ]);
+      const srcTitle = itemData.title || itemData.name;
+      const recs = (recData.results || [])
+        .filter(r => !ratedIds.has(String(r.id)))
+        .slice(0, 12)
+        .map(r => ({ ...r, _type: type }));
+      if (recs.length >= 2) sections.push({ label: `"${srcTitle}" beğendiysen`, items: recs });
+    } catch {}
+  }
+
+  // 2. Genre-weighted discover
+  const genreWeight = {};
+  for (const key of topRated.slice(0, 8)) {
+    const [type, ...idParts] = key.split('_');
+    const id = idParts.join('_');
+    try {
+      const d = await tmdb(`/${type}/${id}`);
+      (d.genres || []).forEach(g => {
+        genreWeight[`${type}_${g.id}`] = (genreWeight[`${type}_${g.id}`] || 0) + ratings[key];
+      });
+    } catch {}
+  }
+
+  const topGenreEntry = Object.entries(genreWeight).sort((a,b) => b[1]-a[1])[0];
+  if (topGenreEntry) {
+    const [typeGenre, genreId] = topGenreEntry[0].split('_');
+    try {
+      const [gData, gList] = await Promise.all([
+        tmdb(`/discover/${typeGenre}`, { with_genres: genreId, sort_by: 'vote_average.desc', 'vote_count.gte': 400 }),
+        tmdb(`/genre/${typeGenre}/list`),
+      ]);
+      const genreName = gList.genres.find(g => g.id === parseInt(genreId))?.name || 'Tür';
+      const items = (gData.results || [])
+        .filter(r => !ratedIds.has(String(r.id)))
+        .slice(0, 12)
+        .map(r => ({ ...r, _type: typeGenre }));
+      if (items.length >= 2) {
+        sections.push({ label: `En iyi ${genreName} ${typeGenre === 'tv' ? 'dizileri' : 'filmleri'}`, items });
+      }
+    } catch {}
+  }
+
+  // 3. Trending
+  try {
+    const trend = await tmdb('/trending/all/week');
+    const items = (trend.results || [])
+      .filter(r => !ratedIds.has(String(r.id)))
+      .slice(0, 12)
+      .map(r => ({ ...r, _type: r.media_type || 'movie' }));
+    if (items.length >= 2) sections.push({ label: 'Bu hafta trend', items });
+  } catch {}
+
+  cnt.innerHTML = '';
+  if (!sections.length) {
+    cnt.innerHTML = '<div class="empty"><div class="empty-icon">😔</div><h3>Öneri oluşturulamadı</h3><p>Daha fazla içerik puanlamayı dene.</p></div>';
+    return;
+  }
+
+  sections.forEach(sec => {
+    const row = document.createElement('div');
+    row.className = 'rec-row';
+    const strip = document.createElement('div');
+    strip.className = 'rec-strip';
+    sec.items.forEach(item => strip.appendChild(makeCard(item, item._type)));
+    row.innerHTML = `<div class="rec-label">${sec.label}</div>`;
+    row.appendChild(strip);
+    cnt.appendChild(row);
+  });
+}
+
+// ══ IMPORT ══
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.add('over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+}
+
+async function handleFile(file) {
+  if (!file?.name.endsWith('.csv')) { showImportAlert('err','❌ Lütfen .csv dosyası seç'); return; }
+  const text  = await file.text();
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const cols  = parseCSVLine(lines[0]);
+
+  const idIdx  = cols.findIndex(c => /const/i.test(c));
+  const ratIdx = cols.findIndex(c => /your.?rating/i.test(c));
+  const titIdx = cols.findIndex(c => /^title$/i.test(c));
+  const typIdx = cols.findIndex(c => /title.?type/i.test(c));
+
+  if (idIdx === -1 || ratIdx === -1) {
+    showImportAlert('err', '❌ IMDb CSV formatı tanınamadı. "ratings.csv" dosyasını denedin mi?');
+    return;
+  }
+
+  const rows = lines.slice(1).map(parseCSVLine).filter(r => r[idIdx] && r[ratIdx]);
+  if (!rows.length) { showImportAlert('err', '❌ Hiç satır bulunamadı'); return; }
+
+  const pw = document.getElementById('progressWrap');
+  const pf = document.getElementById('progressFill');
+  const pt = document.getElementById('progressText');
+  pw.style.display = 'block';
+  showImportAlert('', '');
+
+  let done = 0, success = 0, fail = 0;
+
+  // Process in batches of 5 (TMDB rate limit friendly)
+  for (let i = 0; i < rows.length; i += 5) {
+    await Promise.all(rows.slice(i, i + 5).map(async row => {
+      const imdbId  = row[idIdx]?.trim();
+      const rating  = parseInt(row[ratIdx]);
+      const title   = row[titIdx]?.trim() || '';
+      const typeRaw = (row[typIdx] || '').trim().toLowerCase();
+
+      if (!imdbId || isNaN(rating)) { done++; fail++; return; }
+
+      const isTv = typeRaw.includes('tv') || typeRaw.includes('series') || typeRaw.includes('episode');
+
+      try {
+        const found = await fetch(
+          `${BASE}/find/${imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id&language=tr-TR`
+        ).then(r => r.json());
+
+        const results = isTv
+          ? (found.tv_results || [])
+          : (found.movie_results || []);
+
+        const type = isTv ? 'tv' : 'movie';
+
+        if (results.length) {
+          const m = results[0];
+          const key = `${type}_${m.id}`;
+          ratings[key]   = rating; // store as-is (1-10)
+          metaCache[key] = {
+            title:  m.title || m.name || title,
+            poster: m.poster_path,
+            year:   (m.release_date || m.first_air_date || '').slice(0, 4),
+            type,
+          };
+          success++;
+        } else {
+          // Fallback: store with imdb id, won't have poster
+          const key = `${type}_imdb_${imdbId}`;
+          ratings[key] = rating;
+          if (title) metaCache[key] = { title, year:'', poster:null, type };
+          success++;
+        }
+      } catch {
+        fail++;
+      }
+      done++;
+    }));
+
+    pf.style.width = Math.round((done / rows.length) * 100) + '%';
+    pt.textContent = `${done} / ${rows.length} işlendi...`;
+    saveAll();
+    if (i + 5 < rows.length) await sleep(150);
+  }
+
+  pw.style.display = 'none';
+  pf.style.width = '0%';
+  saveAll();
+  showImportAlert('ok',
+    `✅ ${success} puan içe aktarıldı${fail ? ` · ${fail} eşleştirilemedi` : ''}. "Öneriler" sekmesini kontrol et!`
+  );
+  toast(`${success} puan içe aktarıldı`);
+  // Reset file input
+  document.getElementById('csvFile').value = '';
+}
+
+function parseCSVLine(line) {
+  const res = []; let cur = ''; let inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; continue; }
+    if (ch === ',' && !inQ) { res.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  res.push(cur.trim());
+  return res;
+}
+
+function showImportAlert(type, msg) {
+  const el = document.getElementById('importAlert');
+  el.className = `alert${type === 'ok' ? ' alert-ok' : type === 'err' ? ' alert-err' : ''}`;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// ══ OVERLAY CLOSE ON BG CLICK ══
+['importModal','settingsModal','detailModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal(id);
+  });
+});
+
+// ══ INIT ══
+initNav();
+buildChips();
+
+if (false && !TMDB_KEY) {
+  openModal('apikeyModal');
+} else {
+  loadDiscover();
+}
+</script>
+</body>
+</html>
