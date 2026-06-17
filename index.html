@@ -230,11 +230,12 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .alert-ok{background:rgba(85,196,135,.1);color:var(--success);border:1px solid rgba(85,196,135,.2)}
 .alert-err{background:rgba(224,85,85,.1);color:var(--danger);border:1px solid rgba(224,85,85,.2)}
 
-/* TOAST */
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 16px;font-size:13px;z-index:1000;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-::-webkit-scrollbar{width:5px;height:5px}
+/* TOOLTIP */
+.preview-tooltip{position:fixed;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;width:280px;z-index:1000;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:12px;display:none;color:var(--text)}
+.preview-title{font-weight:700;margin-bottom:6px;font-size:14px;color:var(--accent)}
+.preview-meta{color:var(--muted);margin-bottom:6px}
+.preview-overview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
+.preview-cast{color:var(--muted)}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
@@ -445,6 +446,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="preview-tooltip" id="previewTooltip"></div>
 
 <script>
 // ══ CONFIG ══
@@ -740,6 +742,15 @@ function makeCard(item, type) {
   el.className   = 'card';
   el.onclick     = () => openDetail(item, resolvedType);
 
+  let hoverTimer;
+  el.addEventListener('mouseenter', () => {
+    hoverTimer = setTimeout(() => showPreview(item, resolvedType, el), 2000);
+  });
+  el.addEventListener('mouseleave', () => {
+    clearTimeout(hoverTimer);
+    hidePreview();
+  });
+
   const poster = item.poster_path
     ? `<img src="${IMG_W}${item.poster_path}" alt="${title}" loading="lazy">`
     : `<div class="card-ph">🎬</div>`;
@@ -766,6 +777,36 @@ function makeCard(item, type) {
     </div>
   `;
   return el;
+}
+
+// ══ PREVIEW ══
+async function showPreview(item, type, el) {
+  const tt = document.getElementById('previewTooltip');
+  tt.style.display = 'block';
+  tt.innerHTML = 'Yükleniyor...';
+
+  const rect = el.getBoundingClientRect();
+  tt.style.left = (rect.left + rect.width + 10) + 'px';
+  tt.style.top = rect.top + 'px';
+
+  try {
+    const details = await tmdb(`/${type}/${item.id}`, { append_to_response: 'credits' });
+    const cast = (details.credits?.cast || []).slice(0,3).map(c => c.name).join(', ');
+    const genres = (details.genres || []).map(g => g.name).join(', ');
+
+    tt.innerHTML = `
+      <div class="preview-title">${item.title || item.name}</div>
+      <div class="preview-meta">${genres}</div>
+      <div class="preview-overview">${details.overview || 'Özet yok.'}</div>
+      <div class="preview-cast"><strong>Oyuncular:</strong> ${cast || '-'}</div>
+    `;
+  } catch {
+    tt.style.display = 'none';
+  }
+}
+
+function hidePreview() {
+  document.getElementById('previewTooltip').style.display = 'none';
 }
 
 // ══ DETAIL MODAL ══
