@@ -108,19 +108,6 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .empty h3{font-family:var(--serif);font-size:19px;color:var(--text);margin-bottom:6px}
 .empty p{font-size:13px}
 
-/* RECOMMENDATIONS */
-.rec-row{margin-bottom:36px}
-.rec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:10px}
-.rec-label::after{content:'';flex:1;height:1px;background:var(--border)}
-.rec-strip-wrap{position:relative}
-.rec-strip{display:flex;gap:11px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-.rec-strip .card{min-width:138px;flex-shrink:0}
-.rec-arrow{position:absolute;top:50%;transform:translateY(calc(-50% - 22px));width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:rgba(9,9,16,.88);backdrop-filter:blur(8px);color:var(--text);cursor:pointer;font-size:16px;display:none;align-items:center;justify-content:center;z-index:10;transition:all .2s}
-.rec-arrow:hover{background:var(--surface2);border-color:rgba(255,255,255,.2)}
-.rec-arrow.left{left:-14px}
-.rec-arrow.right{right:-14px}
-@media(hover:hover){.rec-arrow{display:flex}}
-
 /* STATS */
 .stats-row{display:flex;gap:20px;flex-wrap:wrap;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px}
 .stat{text-align:center}
@@ -313,6 +300,19 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   <!-- ÖNERİLER -->
   <div id="page-recommendations" class="page">
     <div class="section-title" style="margin-bottom:22px">Senin İçin Öneriler</div>
+    
+    <div class="filter-sort-bar" id="recFilterBar">
+      <span class="bar-label">Tür:</span>
+      <div class="bar-chips" id="recGenreChips"></div>
+      <div class="bar-divider"></div>
+      <span class="bar-label">Min. Puan:</span>
+      <div class="bar-chips">
+        <span class="bar-chip active" data-rec-rating="0" onclick="setRecRating(this)">Hepsi</span>
+        <span class="bar-chip" data-rec-rating="7" onclick="setRecRating(this)">7+</span>
+        <span class="bar-chip" data-rec-rating="8" onclick="setRecRating(this)">8+</span>
+      </div>
+    </div>
+    
     <div id="recContent"></div>
   </div>
 
@@ -605,6 +605,9 @@ function clearAll() {
 function goHome() {
   document.querySelector('[data-page="discover"]').click();
 }
+
+// ══ NAV ══
+function initNav() {
   document.querySelectorAll('[data-page]').forEach(tab => {
     tab.addEventListener('click', () => {
       const page = tab.dataset.page;
@@ -683,9 +686,11 @@ function doSearch() {
 
 // ══ DISCOVER ══
 async function loadDiscover(append = false) {
+  console.log("Loading discover, TMDB_KEY:", TMDB_KEY);
   const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
   const moreBtn = document.getElementById('loadMoreBtn');
+  // ...
 
   if (!append) {
     grid.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor...</div>';
@@ -735,11 +740,12 @@ async function loadDiscover(append = false) {
 
     if (currentPage < Math.min(totalPages, 10)) moreBtn.classList.add('visible');
 
-  } catch {
+  } catch (e) {
+    console.error("LoadDiscover error:", e);
     if (append) {
       document.getElementById('appendSpinner')?.remove();
     } else {
-      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API anahtarını kontrol et (⚙️)</p></div>';
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API hatası: ' + e.message + '</p></div>';
     }
   }
 }
@@ -756,7 +762,6 @@ function makeCard(item, type) {
   const key   = `${type}_${item.id}`;
   const myR   = ratings[key];
   const inW   = !!watchlist[key];
-  // media_type gelebilir (trending endpoint'i karışık döndürür)
   const resolvedType = item.media_type === 'tv' ? 'tv' : type;
 
   const el       = document.createElement('div');
@@ -776,14 +781,10 @@ function makeCard(item, type) {
     ? `<img src="${IMG_W}${item.poster_path}" alt="${title}" loading="lazy">`
     : `<div class="card-ph">🎬</div>`;
 
-  // TMDB badge
   const scoreBadge = item.vote_average > 0
     ? `<div class="badge"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
-  // Kullanıcı puanı
   const userBadge = myR ? `<div class="badge-u">★ ${myR}</div>` : '';
-  // İzle listesi
   const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
-  // Dizi etiketi (arama/öneri karışık geldiğinde belli olsun)
   const tvBadge = resolvedType === 'tv' ? `<div class="badge-tv">DİZİ</div>` : '';
 
   el.innerHTML = `
@@ -889,8 +890,6 @@ function openDetail(item, type) {
     </div>
   `;
   openModal('detailModal');
-
-  // Arka planda tam detayları yükle
   fetchDetailExtras(item.id, type);
 }
 
@@ -901,7 +900,6 @@ async function fetchDetailExtras(id, type) {
       tmdb(`/${type}/${id}/credits`).catch(() => ({ cast: [] })),
     ]);
 
-    // Runtime / Seasons
     const runtimeEl = document.getElementById('detailRuntime');
     if (runtimeEl) {
       if (type === 'movie' && details.runtime) {
@@ -913,18 +911,15 @@ async function fetchDetailExtras(id, type) {
       }
     }
 
-    // Genres
     const genreEl = document.getElementById('detailGenres');
     if (genreEl && details.genres?.length) {
       genreEl.innerHTML = details.genres.slice(0, 5)
         .map(g => `<span class="genre-tag">${g.name}</span>`).join('');
     }
 
-    // Overview (eğer item.overview yoktu)
     const ovEl = document.getElementById('detailOverview');
     if (ovEl && details.overview) ovEl.innerHTML = `<div class="detail-overview">${details.overview}</div>`;
 
-    // Cast
     const castEl = document.getElementById('detailCast');
     if (castEl && credits.cast?.length) {
       castEl.innerHTML = credits.cast.slice(0, 8).map(p => `
@@ -937,14 +932,12 @@ async function fetchDetailExtras(id, type) {
       `).join('');
     }
 
-    // IMDb link + puan
     const imdbId   = details.external_ids?.imdb_id;
     const linkEl   = document.getElementById('imdbLink');
     if (linkEl && imdbId) {
       linkEl.href    = `https://www.imdb.com/title/${imdbId}/`;
       linkEl.style.display = 'inline-flex';
 
-      // IMDb puanı (OMDb)
       if (OMDB_KEY) {
         const od = await omdb(imdbId);
         const pillEl = document.getElementById('imdbScorePill');
@@ -957,8 +950,7 @@ async function fetchDetailExtras(id, type) {
         }
       }
     }
-
-  } catch {} // Sessiz fail — temel bilgiler zaten gösterildi
+  } catch {}
 }
 
 function hoverD(n) {
@@ -1018,7 +1010,6 @@ function toggleWatch() {
   saveAll();
 }
 
-// ══ WATCHLIST ══
 function renderWatchlist() {
   const grid  = document.getElementById('watchGrid');
   const count = document.getElementById('watchCount');
@@ -1051,7 +1042,6 @@ function renderWatchlist() {
   });
 }
 
-// ══ RATED PAGE ══
 function setTypeFilter(el) {
   document.querySelectorAll('[data-type-filter]').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
@@ -1083,7 +1073,6 @@ function renderRated() {
     <div class="stat"><div class="stat-n">${avg}</div><div class="stat-l">Ort. Puan</div></div>
   `;
 
-  // Tür filtresi
   let keys = allKeys;
   if (typeFilter === 'movie') keys = allKeys.filter(k => k.startsWith('movie_'));
   if (typeFilter === 'tv')    keys = allKeys.filter(k => k.startsWith('tv_'));
@@ -1170,10 +1159,7 @@ function deleteRating(key) {
 }
 
 // ══ RECOMMENDATIONS ══
-let recOffset = 12; // Initial amount
-let recDataCache = []; // Store recs
-
-async function loadRecommendations(append = false) {
+async function loadRecommendations() {
   const cnt  = document.getElementById('recContent');
   const keys = Object.keys(ratings);
 
@@ -1182,50 +1168,12 @@ async function loadRecommendations(append = false) {
     return;
   }
 
-  if (!append) {
-    cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
-    recDataCache = [];
-    recOffset = 12;
-  }
-
-async function loadRecommendations(append = false) {
-  const cnt  = document.getElementById('recContent');
-  const keys = Object.keys(ratings);
-
-  if (keys.length < 3) {
-    cnt.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><h3>Öneri için içerik puanla</h3><p>En az 3 film veya dizi puanladıktan sonra kişisel öneriler burada görünür.</p></div>';
-    return;
-  }
-
-  if (!append) {
-    cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
-  }
+  cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
 
   const ratedIds = new Set(
     keys.filter(k => !k.includes('_imdb_')).map(k => {
       const parts = k.split('_');
       return parts.slice(1).join('');
-    })
-  );
-
-  const topRated = [...keys]
-    .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'))
-    .sort((a, b) => ratings[b] - ratings[a]);
-
-  const sections = [];
-
-  // ... (keeping existing logic for fetching sections)
-  // Re-run the fetching logic. 
-  // (Note: To keep this surgical, I will just add the button.)
-  
-  // Implementation note: The existing complex logic makes a complete refactor 
-  // risky in one turn. I will add the Load More button at the end of the 
-  // recommendation rows.
-
-  const ratedIds = new Set(
-    keys.filter(k => !k.includes('_imdb_')).map(k => {
-      const parts = k.split('_');
-      return parts.slice(1).join(''); // movie_12345 → 12345
     })
   );
 
@@ -1271,7 +1219,7 @@ async function loadRecommendations(append = false) {
 
   const topGenreEntry = Object.entries(genreWeight).sort((a, b) => b[1] - a[1])[0];
   if (topGenreEntry) {
-    const [tg, gid] = topGenreEntry[0].split('|'); // | ayracı kullandık — _ problemi yok
+    const [tg, gid] = topGenreEntry[0].split('|');
     try {
       const [gData, gList] = await Promise.all([
         tmdb(`/discover/${tg}`, { with_genres: gid, sort_by: 'vote_average.desc', 'vote_count.gte': 400 }),
@@ -1324,12 +1272,11 @@ async function loadRecommendations(append = false) {
     cnt.appendChild(row);
   });
   
-  // Add More button
-  const moreBtn = document.createElement('button');
-  moreBtn.className = 'load-more-btn visible';
-  moreBtn.textContent = 'Tüm önerileri yenile';
-  moreBtn.onclick = () => loadRecommendations();
-  cnt.appendChild(moreBtn);
+  const refreshBtn = document.createElement('button');
+  refreshBtn.className = 'load-more-btn visible';
+  refreshBtn.textContent = 'Tüm önerileri yenile';
+  refreshBtn.onclick = () => loadRecommendations();
+  cnt.appendChild(refreshBtn);
 }
 
 // ══ IMPORT ══
