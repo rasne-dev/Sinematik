@@ -2,19 +2,21 @@
 
 Kişisel film ve dizi takip & öneri sitesi. Tek HTML dosyası, sıfır backend, tamamen ücretsiz.
 
-**[→ sinematik.live](https://rasne-dev.github.io/sinematik)** *(yakında)*
+**[→ sinematik.live](https://rasne-dev.github.io/sinematik)**
 
 ---
 
 ## Özellikler
 
-- 🔍 **Keşfet** — TMDB üzerinden popüler film & dizi, tür filtreleri, arama
-- ✨ **Öneriler** — Puanlarına göre kişisel öneri motoru (tür ağırlığı + TMDB benzer içerik)
-- 🕐 **İzle Listesi** — Sonra izlemek istediğin içerikleri kaydet
-- ⭐ **Puanladıklarım** — Tüm puanlarını listele, güncelle, istatistiklerini gör
-- 📥 **IMDb İçe Aktarma** — IMDb `ratings.csv` dosyasını yükle, tüm puanlar otomatik eşleştirilir
-- 🌙 Dark theme, mobil uyumlu
-- 💾 Tüm veriler tarayıcıda saklanır (localStorage) — kayıt gerekmez
+- 🔍 **Keşfet** — TMDB üzerinden popüler film & dizi, **çoklu tür seçimi ve puan aralığı filtreleri**, arama, sonsuz kaydırma (infinite scroll).
+- ✨ **Öneriler** — Puanlarına göre kişisel öneri motoru (tür ağırlığı + TMDB benzer içerik), **tür ve puan filtreleri**, sonsuz kaydırma.
+- 🕐 **İzleme Listesi** — Sonra izlemek istediğin içerikleri kaydet.
+- ⭐ **Puanladıklarım** — Tüm puanlarını listele, güncelle, IMDb puanına göre sırala, istatistiklerini gör.
+- 📥 **IMDb İçe Aktarma** — IMDb `ratings.csv` dosyasını yükle, tüm puanlar otomatik eşleştirilir.
+- 🔞 **İçerik Filtreleme** — Ayarlar kısmından NSFW (yetişkin) içerikleri gizleme ve yaş sınırı ayarı.
+- ℹ️ **Akıllı İpucu** — Önerilen içeriklerin neden önerildiğini detay modalında gör.
+- 🌙 Dark theme, mobil uyumlu.
+- 💾 Tüm veriler tarayıcıda saklanır (localStorage) — kayıt gerekmez.
 
 ---
 
