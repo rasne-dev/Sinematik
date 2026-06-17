@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FilmÖnerim</title>
+<title>Sinematik</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:#090910; --surface:#10101a; --surface2:#18182a;
+:root{
+  --bg:#090910;--surface:#10101a;--surface2:#18182a;
   --border:rgba(255,255,255,0.08);
-  --accent:#e8b86d; --accent2:#7c6af0;
-  --text:#eeebf0; --muted:#65607a;
-  --danger:#e05555; --success:#55c487;
+  --accent:#e8b86d;--accent2:#7c6af0;
+  --text:#eeebf0;--muted:#65607a;
+  --danger:#e05555;--success:#55c487;
+  --imdb:#f5c518;
   --r:12px;
   --serif:'DM Serif Display',serif;
   --sans:'DM Sans',sans-serif;
@@ -23,8 +24,8 @@ body::before{content:'';position:fixed;top:-250px;left:-250px;width:700px;height
 body::after{content:'';position:fixed;bottom:-150px;right:-150px;width:600px;height:600px;background:radial-gradient(circle,rgba(232,184,109,.05) 0%,transparent 70%);pointer-events:none;z-index:0}
 
 /* NAV */
-nav.topnav{position:sticky;top:0;z-index:200;background:rgba(9,9,16,.9);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px}
-.logo{font-family:var(--serif);font-size:20px;color:var(--accent);flex-shrink:0}
+nav.topnav{position:sticky;top:0;z-index:200;background:rgba(9,9,16,.92);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:14px}
+.logo{font-family:var(--serif);font-size:21px;color:var(--accent);flex-shrink:0;letter-spacing:-.3px}
 .logo span{color:var(--text)}
 .nav-tabs{display:flex;gap:2px;background:rgba(255,255,255,.04);border-radius:10px;padding:3px;border:1px solid var(--border);flex-shrink:0}
 .nav-tab{padding:5px 13px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);transition:all .2s;border:none;background:none;font-family:var(--sans);white-space:nowrap}
@@ -49,13 +50,17 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .hero{text-align:center;padding:16px 0 40px}
 .hero h1{font-family:var(--serif);font-size:clamp(30px,5vw,50px);line-height:1.1;margin-bottom:10px;background:linear-gradient(130deg,var(--text) 30%,var(--accent) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero p{color:var(--muted);font-size:14px;max-width:400px;margin:0 auto 22px}
-.search-wrap{display:flex;gap:7px;max-width:500px;margin:0 auto}
+.search-wrap{display:flex;gap:7px;max-width:520px;margin:0 auto}
 .type-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:9px;overflow:hidden;flex-shrink:0}
-.type-btn{padding:0 13px;height:40px;border:none;background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .2s;white-space:nowrap}
+.type-btn{padding:0 14px;height:40px;border:none;background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .2s;white-space:nowrap}
 .type-btn.active{background:var(--surface2);color:var(--text)}
-.search-input{flex:1;padding:10px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:var(--sans);outline:none;transition:border-color .2s;min-width:0}
+.search-field{flex:1;position:relative;min-width:0}
+.search-input{width:100%;padding:10px 34px 10px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:var(--sans);outline:none;transition:border-color .2s}
 .search-input:focus{border-color:var(--accent2)}
 .search-input::placeholder{color:var(--muted)}
+.search-clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;background:var(--muted);color:var(--bg);border:none;cursor:pointer;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center;transition:background .15s}
+.search-clear:hover{background:var(--text)}
+.search-clear.visible{display:flex}
 .search-btn{padding:10px 18px;border-radius:9px;background:var(--accent2);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:opacity .2s;flex-shrink:0}
 .search-btn:hover{opacity:.85}
 
@@ -70,27 +75,35 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .section-title small{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:400}
 
 /* CARD GRID */
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:13px;margin-bottom:44px}
-
-.card{border-radius:var(--r);overflow:hidden;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;position:relative;animation:cardIn .3s ease both}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:13px;margin-bottom:28px}
+.card{border-radius:var(--r);overflow:hidden;background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:box-shadow .2s,border-color .2s;position:relative;animation:cardIn .3s ease both}
 @keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,.5);border-color:rgba(255,255,255,.11)}
+@media(hover:hover){.card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,.5);border-color:rgba(255,255,255,.11)}}
 .card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:var(--surface2)}
 .card-ph{width:100%;aspect-ratio:2/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--muted)}
 .card-body{padding:9px 11px 11px}
 .card-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-.card-sub{font-size:11px;color:var(--muted);display:flex;gap:6px}
+.card-sub{font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center}
 .card-score{color:var(--accent);font-weight:600}
 
-.badge{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;color:var(--accent)}
+/* BADGES */
+.badge{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:3px}
+.badge-tmdb{font-size:8px;opacity:.6;font-weight:400}
 .badge-u{position:absolute;top:7px;left:7px;background:var(--accent2);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#fff}
-.badge-w{position:absolute;bottom:50px;right:7px;background:rgba(232,184,109,.12);border:1px solid rgba(232,184,109,.3);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--accent)}
+.badge-w{position:absolute;bottom:52px;right:7px;background:rgba(232,184,109,.12);border:1px solid rgba(232,184,109,.3);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--accent)}
+.badge-tv{position:absolute;bottom:52px;left:7px;background:rgba(124,106,240,.15);border:1px solid rgba(124,106,240,.3);border-radius:5px;padding:2px 6px;font-size:9px;font-weight:600;color:var(--accent2)}
+
+/* LOAD MORE */
+.load-more-wrap{text-align:center;margin-bottom:40px}
+.load-more-btn{padding:10px 28px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .2s;display:none}
+.load-more-btn:hover{border-color:rgba(255,255,255,.18)}
+.load-more-btn.visible{display:inline-block}
 
 /* LOADING / EMPTY */
 .loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--muted);font-size:14px;grid-column:1/-1}
 .spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent2);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:64px 20px;color:var(--muted);grid-column:1/-1}
+.empty{text-align:center;padding:64px 20px;color:var(--muted)}
 .empty-icon{font-size:42px;margin-bottom:12px}
 .empty h3{font-family:var(--serif);font-size:19px;color:var(--text);margin-bottom:6px}
 .empty p{font-size:13px}
@@ -99,14 +112,28 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .rec-row{margin-bottom:36px}
 .rec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:10px}
 .rec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.rec-strip-wrap{position:relative}
 .rec-strip{display:flex;gap:11px;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .rec-strip .card{min-width:138px;flex-shrink:0}
+.rec-arrow{position:absolute;top:50%;transform:translateY(calc(-50% - 22px));width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:rgba(9,9,16,.88);backdrop-filter:blur(8px);color:var(--text);cursor:pointer;font-size:16px;display:none;align-items:center;justify-content:center;z-index:10;transition:all .2s}
+.rec-arrow:hover{background:var(--surface2);border-color:rgba(255,255,255,.2)}
+.rec-arrow.left{left:-14px}
+.rec-arrow.right{right:-14px}
+@media(hover:hover){.rec-arrow{display:flex}}
 
 /* STATS */
-.stats-row{display:flex;gap:20px;flex-wrap:wrap;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:24px}
+.stats-row{display:flex;gap:20px;flex-wrap:wrap;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px}
 .stat{text-align:center}
 .stat-n{font-family:var(--serif);font-size:26px;color:var(--accent);line-height:1}
 .stat-l{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* FILTER / SORT BAR */
+.filter-sort-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.bar-label{font-size:12px;color:var(--muted);flex-shrink:0}
+.bar-chips{display:flex;gap:5px}
+.bar-chip{padding:4px 11px;border-radius:50px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;user-select:none;font-family:var(--sans)}
+.bar-chip.active{border-color:var(--accent2);color:var(--accent2);background:rgba(124,106,240,.08)}
+.bar-divider{width:1px;height:16px;background:var(--border);margin:0 4px}
 
 /* RATED LIST */
 .rated-list{display:flex;flex-direction:column;gap:7px}
@@ -116,16 +143,18 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .rated-thumb img{width:100%;height:100%;object-fit:cover}
 .rated-info{flex:1;min-width:0}
 .rated-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rated-sub{font-size:11px;color:var(--muted);margin-bottom:4px}
+.rated-sub{font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.rated-type-pill{background:rgba(124,106,240,.12);color:var(--accent2);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600}
+.rated-imdb{background:rgba(245,197,24,.1);color:var(--imdb);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600}
 .star-row{display:flex;gap:2px}
-.star{font-size:14px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .1s,transform .1s}
+.star{font-size:14px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .1s,transform .1s;user-select:none}
 .star.on{color:var(--accent)}
-.star:hover{transform:scale(1.2)}
+@media(hover:hover){.star:hover{transform:scale(1.2)}}
 .del-btn{padding:5px 10px;border-radius:7px;flex-shrink:0;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:var(--sans);transition:all .2s}
 .del-btn:hover{border-color:var(--danger);color:var(--danger)}
 
 /* MODALS */
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:20px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:20px}
 .overlay.open{display:flex}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:450px;position:relative;max-height:90vh;overflow-y:auto}
 .modal-hd{padding:22px 22px 0}
@@ -136,31 +165,50 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .modal-close:hover{color:var(--text)}
 
 /* DETAIL MODAL */
-.detail-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;position:relative}
-.detail-backdrop{width:100%;height:190px;object-fit:cover;border-radius:16px 16px 0 0;background:linear-gradient(to bottom,var(--surface2),var(--surface));display:block}
+.detail-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:580px;max-height:88vh;overflow-y:auto;position:relative}
+.detail-backdrop{width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;display:block}
+.detail-backdrop-ph{width:100%;height:200px;border-radius:16px 16px 0 0;background:linear-gradient(135deg,var(--surface2) 0%,rgba(124,106,240,.15) 100%);display:flex;align-items:center;justify-content:center;font-size:52px}
 .detail-bd{padding:20px 22px 26px}
-.detail-title{font-family:var(--serif);font-size:22px;margin-bottom:5px;line-height:1.2}
-.detail-meta{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.detail-overview{font-size:13px;line-height:1.7;color:rgba(238,235,240,.72);margin-bottom:18px;max-height:90px;overflow-y:auto}
+.detail-title{font-family:var(--serif);font-size:22px;margin-bottom:8px;line-height:1.2}
+.detail-scores{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.score-pill{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:700}
+.score-tmdb{background:rgba(1,180,228,.1);color:#01b4e4;border:1px solid rgba(1,180,228,.2)}
+.score-imdb{background:rgba(245,197,24,.1);color:var(--imdb);border:1px solid rgba(245,197,24,.2)}
+.score-label{font-size:10px;font-weight:500;opacity:.8}
+.score-val{font-size:15px}
+.detail-meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.detail-meta span{display:flex;align-items:center;gap:3px}
+.genre-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.genre-tag{padding:3px 9px;border-radius:50px;border:1px solid var(--border);font-size:11px;color:var(--muted)}
+.detail-overview{font-size:13px;line-height:1.7;color:rgba(238,235,240,.72);margin-bottom:16px;max-height:80px;overflow-y:auto}
+.cast-row{display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.cast-item{flex-shrink:0;text-align:center;width:60px}
+.cast-img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--surface2);display:block;margin:0 auto 4px;border:1px solid var(--border)}
+.cast-name{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px}
 .rate-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px}
 .detail-stars{display:flex;gap:3px;margin-bottom:16px}
-.dstar{font-size:21px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .08s,transform .1s}
+.dstar{font-size:22px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .08s,transform .1s;user-select:none}
 .dstar.on{color:var(--accent)}
-.dstar:hover{transform:scale(1.15)}
+@media(hover:hover){.dstar:hover{transform:scale(1.15)}}
 .detail-actions{display:flex;gap:7px;flex-wrap:wrap}
+.detail-loading{font-size:12px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px}
 
-.btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:opacity .2s;border:none}
+.btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:opacity .2s;border:none;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
 .btn-purple{background:var(--accent2);color:#fff}
 .btn-purple:hover{opacity:.85}
 .btn-ghost{background:none;border:1px solid var(--border);color:var(--text)}
 .btn-ghost:hover{border-color:rgba(255,255,255,.2)}
 .btn-gold{background:rgba(232,184,109,.1);border:1px solid rgba(232,184,109,.22);color:var(--accent)}
 .btn-gold:hover{background:rgba(232,184,109,.18)}
+.btn-imdb{background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.25);color:var(--imdb);font-size:12px;padding:7px 12px}
+.btn-imdb:hover{background:rgba(245,197,24,.18)}
 
-/* API KEY MODAL */
-.apikey-input{width:100%;padding:10px 13px;border-radius:9px;margin-bottom:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .2s}
+/* SETTINGS */
+.settings-section{margin-bottom:20px}
+.settings-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+.apikey-input{width:100%;padding:10px 13px;border-radius:9px;margin-bottom:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .2s}
 .apikey-input:focus{border-color:var(--accent2)}
-.apikey-hint{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7}
+.apikey-hint{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.8}
 .apikey-hint a{color:var(--accent2);text-decoration:none}
 .apikey-hint a:hover{text-decoration:underline}
 
@@ -175,18 +223,17 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .drop-text{font-size:13px;color:var(--muted)}
 .drop-text strong{display:block;color:var(--text);margin-bottom:3px}
 .progress-wrap{margin-bottom:10px;display:none}
-.progress-bar{height:3px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:7px}
-.progress-fill{height:100%;background:var(--accent2);border-radius:2px;transition:width .3s;width:0%}
+.progress-bar{height:4px;border-radius:2px;background:var(--surface2);overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:2px;transition:width .25s;width:0%}
 .progress-text{font-size:12px;color:var(--muted)}
 .alert{padding:9px 13px;border-radius:8px;font-size:13px;display:none;margin-top:8px}
 .alert-ok{background:rgba(85,196,135,.1);color:var(--success);border:1px solid rgba(85,196,135,.2)}
 .alert-err{background:rgba(224,85,85,.1);color:var(--danger);border:1px solid rgba(224,85,85,.2)}
 
 /* TOAST */
-.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 16px;font-size:13px;z-index:1000;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 16px;font-size:13px;z-index:1000;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* SCROLLBAR */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -194,22 +241,26 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 /* MOBILE */
 .mobile-nav{display:none}
 @media(max-width:640px){
-  nav.topnav{padding:0 14px;gap:10px}
+  nav.topnav{padding:0 14px;gap:8px}
   .nav-tabs{display:none}
+  .import-label{display:none}
   main{padding:18px 14px 80px}
   .card-grid{grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
   .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:rgba(9,9,16,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:200;padding:6px 0 env(safe-area-inset-bottom)}
   .mtab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0;color:var(--muted);font-size:10px;cursor:pointer;border:none;background:none;font-family:var(--sans);transition:color .2s}
   .mtab.active{color:var(--accent)}
   .mtab-icon{font-size:17px}
+  .search-wrap{flex-wrap:wrap}
+  .type-toggle,.type-toggle .type-btn{flex:1}
+  .detail-actions{gap:5px}
+  .btn{padding:8px 13px;font-size:12px}
 }
 </style>
 </head>
 <body>
 
-<!-- TOP NAV -->
 <nav class="topnav">
-  <div class="logo">Film<span>Önerim</span></div>
+  <div class="logo">Sine<span>matik</span></div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="discover">🔍 Keşfet</button>
     <button class="nav-tab" data-page="recommendations">✨ Öneriler</button>
@@ -218,7 +269,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   </div>
   <div class="nav-spacer"></div>
   <div class="nav-actions">
-    <button class="import-btn" onclick="openModal('importModal')">📥 IMDb İçe Aktar</button>
+    <button class="import-btn" onclick="openModal('importModal')">📥 <span class="import-label">IMDb İçe Aktar</span></button>
     <button class="icon-btn" onclick="openSettings()" title="Ayarlar">⚙️</button>
   </div>
 </nav>
@@ -231,10 +282,15 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <p>Film ve dizi puanla, sana özel öneriler al.</p>
       <div class="search-wrap">
         <div class="type-toggle">
-          <button class="type-btn active" onclick="setType('movie',this)">Film</button>
-          <button class="type-btn" onclick="setType('tv',this)">Dizi</button>
+          <button class="type-btn active" onclick="setType('movie',this)">🎬 Film</button>
+          <button class="type-btn" onclick="setType('tv',this)">📺 Dizi</button>
         </div>
-        <input class="search-input" id="searchInput" placeholder="Ara..." onkeydown="if(event.key==='Enter')doSearch()">
+        <div class="search-field">
+          <input class="search-input" id="searchInput" placeholder="Ara..."
+            oninput="onSearchInput(this.value)"
+            onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Temizle">✕</button>
+        </div>
         <button class="search-btn" onclick="doSearch()">Ara</button>
       </div>
     </div>
@@ -242,6 +298,9 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
     <div class="section-title" id="discoverTitle">Popüler Filmler <small></small></div>
     <div id="discoverGrid" class="card-grid">
       <div class="loading"><div class="spinner"></div>Yükleniyor...</div>
+    </div>
+    <div class="load-more-wrap">
+      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">Daha fazla yükle</button>
     </div>
   </div>
 
@@ -259,13 +318,27 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 
   <!-- PUANLADIKLARIM -->
   <div id="page-rated" class="page">
-    <div class="section-title" style="margin-bottom:18px">Puanladıklarım</div>
+    <div class="section-title" style="margin-bottom:16px">Puanladıklarım</div>
     <div class="stats-row" id="statsRow"></div>
+    <div class="filter-sort-bar">
+      <span class="bar-label">Tür:</span>
+      <div class="bar-chips">
+        <span class="bar-chip active" data-type-filter="all"  onclick="setTypeFilter(this)">Tümü</span>
+        <span class="bar-chip"       data-type-filter="movie" onclick="setTypeFilter(this)">🎬 Film</span>
+        <span class="bar-chip"       data-type-filter="tv"    onclick="setTypeFilter(this)">📺 Dizi</span>
+      </div>
+      <div class="bar-divider"></div>
+      <span class="bar-label">Sırala:</span>
+      <div class="bar-chips">
+        <span class="bar-chip active" data-sort="rating" onclick="setSort(this)">Puana Göre</span>
+        <span class="bar-chip"        data-sort="alpha"  onclick="setSort(this)">A–Z</span>
+        <span class="bar-chip"        data-sort="year"   onclick="setSort(this)">Yıl</span>
+      </div>
+    </div>
     <div id="ratedList" class="rated-list"></div>
   </div>
 </main>
 
-<!-- MOBILE NAV -->
 <nav class="mobile-nav">
   <button class="mtab active" data-page="discover"><div class="mtab-icon">🔍</div>Keşfet</button>
   <button class="mtab" data-page="recommendations"><div class="mtab-icon">✨</div>Öneriler</button>
@@ -273,7 +346,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   <button class="mtab" data-page="rated"><div class="mtab-icon">⭐</div>Puanlar</button>
 </nav>
 
-<!-- API KEY MODAL (ilk kurulum) -->
+<!-- API KEY MODAL -->
 <div class="overlay" id="apikeyModal">
   <div class="modal">
     <div class="modal-hd">
@@ -286,8 +359,9 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         2. <a href="https://www.themoviedb.org/settings/api" target="_blank">Ayarlar → API</a> sayfasına git<br>
         3. <strong>API Key (v3 auth)</strong> değerini kopyalayıp yapıştır
       </div>
-      <input class="apikey-input" id="apikeyInput" placeholder="API anahtarını buraya yapıştır..." onkeydown="if(event.key==='Enter')saveApiKey()">
-      <div class="alert alert-err" id="apikeyError">Geçersiz anahtar — lütfen kontrol et.</div>
+      <input class="apikey-input" id="apikeyInput" placeholder="TMDB API anahtarı..."
+        onkeydown="if(event.key==='Enter')saveApiKey()">
+      <div class="alert alert-err" id="apikeyError" style="display:none">Geçersiz anahtar — lütfen kontrol et.</div>
       <button class="btn btn-purple" onclick="saveApiKey()" style="width:100%;margin-top:4px">Devam Et →</button>
     </div>
   </div>
@@ -299,14 +373,33 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
     <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
     <div class="modal-hd">
       <h3>⚙️ Ayarlar</h3>
-      <p>API anahtarını değiştir veya verileri sıfırla.</p>
+      <p></p>
     </div>
     <div class="modal-body">
-      <div class="rate-label" style="margin-bottom:7px">TMDB API Anahtarı</div>
-      <input class="apikey-input" id="settingsKeyInput" placeholder="Yeni anahtar...">
-      <button class="btn btn-purple" onclick="updateApiKey()" style="margin-bottom:22px">Güncelle</button>
-      <div class="rate-label" style="margin-bottom:8px;color:var(--danger)">Tehlikeli Bölge</div>
-      <button class="btn btn-ghost" onclick="clearAll()" style="border-color:var(--danger);color:var(--danger);width:100%">Tüm Verileri Sıfırla</button>
+      <div class="settings-section">
+        <div class="settings-label">TMDB API Anahtarı</div>
+        <input class="apikey-input" id="settingsKeyInput" placeholder="Yeni anahtar...">
+        <button class="btn btn-purple" onclick="updateApiKey()" style="width:100%">Güncelle</button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label" style="display:flex;align-items:center;gap:6px">
+          <span style="background:var(--imdb);color:#000;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:800">IMDb</span>
+          OMDb API Anahtarı <span style="font-size:10px;color:var(--muted);font-weight:400">(isteğe bağlı)</span>
+        </div>
+        <div class="apikey-hint">
+          Film detayında gerçek IMDb puanını görmek için:<br>
+          <a href="https://www.omdbapi.com/apikey.aspx" target="_blank">omdbapi.com</a> → Free (1.000/gün) → E-posta ile key al
+        </div>
+        <input class="apikey-input" id="omdbKeyInput" placeholder="OMDb API anahtarı...">
+        <button class="btn btn-gold" onclick="updateOmdbKey()" style="width:100%">Kaydet</button>
+      </div>
+
+      <div class="settings-section" style="border-top:1px solid var(--border);padding-top:16px">
+        <div class="settings-label" style="color:var(--danger)">Tehlikeli Bölge</div>
+        <button class="btn btn-ghost" onclick="clearAll()"
+          style="border-color:var(--danger);color:var(--danger);width:100%">Tüm Verileri Sıfırla</button>
+      </div>
     </div>
   </div>
 </div>
@@ -317,7 +410,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
     <button class="modal-close" onclick="closeModal('importModal')">✕</button>
     <div class="modal-hd">
       <h3>📥 IMDb Puanlarını İçe Aktar</h3>
-      <p>Tüm IMDb puanlarını otomatik olarak eşleştirip içe alır.</p>
+      <p>Tüm IMDb puanlarını otomatik olarak TMDB ile eşleştirip içe alır.</p>
     </div>
     <div class="modal-body">
       <div class="steps">
@@ -325,10 +418,16 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         <div class="step"><div class="step-n">2</div><div><code>ratings.csv</code> dosyasını indir</div></div>
         <div class="step"><div class="step-n">3</div><div>Aşağıya sürükle ya da seç — geri kalanı otomatik</div></div>
       </div>
-      <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()"
-           ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="this.classList.remove('over')">
+      <div class="drop-zone" id="dropZone"
+           onclick="document.getElementById('csvFile').click()"
+           ondrop="handleDrop(event)"
+           ondragover="handleDragOver(event)"
+           ondragleave="this.classList.remove('over')">
         <div class="drop-icon">📄</div>
-        <div class="drop-text"><strong>ratings.csv dosyasını sürükle veya seç</strong>IMDb CSV formatı otomatik algılanır</div>
+        <div class="drop-text">
+          <strong>ratings.csv dosyasını sürükle veya seç</strong>
+          IMDb CSV formatı otomatik algılanır
+        </div>
       </div>
       <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleFile(this.files[0])">
       <div class="progress-wrap" id="progressWrap">
@@ -349,30 +448,39 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 
 <script>
 // ══ CONFIG ══
-const BASE   = 'https://api.tmdb.org/3';
-const IMG_W  = 'https://image.tmdb.org/t/p/w342';
-const IMG_B  = 'https://image.tmdb.org/t/p/w780';
+const BASE      = 'https://api.tmdb.org/3';
+const OMDB_BASE = 'https://www.omdbapi.com';
+const IMG_W     = 'https://image.tmdb.org/t/p/w342';
+const IMG_B     = 'https://image.tmdb.org/t/p/w780';
+const IMG_FACE  = 'https://image.tmdb.org/t/p/w92';
+const DEFAULT_KEY = '65f268a4c66640ec7e94f674ad9dbceb';
 
 // ══ STATE ══
-let TMDB_KEY  = ls('fo_key') || '65f268a4c66640ec7e94f674ad9dbceb';
+let TMDB_KEY  = ls('fo_key')    || DEFAULT_KEY;
+let OMDB_KEY  = ls('fo_omdb')   || '';
 let ratings   = lsJSON('fo_ratings', {});
-let watchlist = lsJSON('fo_watch', {});
-let metaCache = lsJSON('fo_meta', {});
+let watchlist = lsJSON('fo_watch',   {});
+let metaCache = lsJSON('fo_meta',    {});
 
 let currentType   = 'movie';
 let currentGenre  = '';
 let currentSearch = '';
+let currentPage   = 1;
+let totalPages    = 1;
 let currentItem   = null;
 let pendingRating = 0;
+let sortMode      = 'rating';
+let typeFilter    = 'all';
+let activePage    = 'discover';
 
-// ══ LOCAL STORAGE ══
-function ls(k)         { return localStorage.getItem(k); }
-function lsSet(k,v)    { localStorage.setItem(k, v); }
-function lsJSON(k,def) { try { return JSON.parse(ls(k)) || def; } catch { return def; } }
+// ══ STORAGE ══
+function ls(k)          { return localStorage.getItem(k); }
+function lsSet(k, v)    { localStorage.setItem(k, v); }
+function lsJSON(k, def) { try { return JSON.parse(ls(k)) || def; } catch { return def; } }
 function saveAll() {
-  lsSet('fo_ratings',  JSON.stringify(ratings));
-  lsSet('fo_watch',    JSON.stringify(watchlist));
-  lsSet('fo_meta',     JSON.stringify(metaCache));
+  lsSet('fo_ratings', JSON.stringify(ratings));
+  lsSet('fo_watch',   JSON.stringify(watchlist));
+  lsSet('fo_meta',    JSON.stringify(metaCache));
 }
 
 // ══ API ══
@@ -380,13 +488,22 @@ async function tmdb(path, params = {}) {
   const url = new URL(BASE + path);
   url.searchParams.set('api_key', TMDB_KEY);
   url.searchParams.set('language', 'tr-TR');
-  for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const r = await fetch(url);
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
 
-// ══ UI HELPERS ══
+async function omdb(imdbId) {
+  if (!OMDB_KEY || !imdbId) return null;
+  try {
+    const r = await fetch(`${OMDB_BASE}/?i=${imdbId}&apikey=${OMDB_KEY}`);
+    const d = await r.json();
+    return d.Response === 'True' ? d : null;
+  } catch { return null; }
+}
+
+// ══ HELPERS ══
 function toast(msg, ms = 2600) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -396,28 +513,39 @@ function toast(msg, ms = 2600) {
 }
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
 
-// ══ API KEY MANAGEMENT ══
+// ESC closes modals
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  ['detailModal','importModal','settingsModal','apikeyModal'].forEach(id =>
+    document.getElementById(id).classList.remove('open')
+  );
+});
+['importModal','settingsModal','detailModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal(id);
+  });
+});
+
+// ══ API KEY ══
 async function saveApiKey() {
-  const key = document.getElementById('apikeyInput').value.trim();
-  if (!key) return;
+  const key   = document.getElementById('apikeyInput').value.trim();
   const errEl = document.getElementById('apikeyError');
+  if (!key) return;
   errEl.style.display = 'none';
   try {
     const r = await fetch(`${BASE}/movie/popular?api_key=${key}&language=tr-TR`);
     if (!r.ok) throw new Error();
-    TMDB_KEY = key;
-    lsSet('fo_key', key);
+    TMDB_KEY = key; lsSet('fo_key', key);
     closeModal('apikeyModal');
     loadDiscover();
-  } catch {
-    errEl.style.display = 'block';
-  }
+  } catch { errEl.style.display = 'block'; }
 }
 
 function openSettings() {
   document.getElementById('settingsKeyInput').value = TMDB_KEY;
+  document.getElementById('omdbKeyInput').value     = OMDB_KEY;
   openModal('settingsModal');
 }
 
@@ -427,19 +555,25 @@ async function updateApiKey() {
   try {
     const r = await fetch(`${BASE}/movie/popular?api_key=${key}`);
     if (!r.ok) throw new Error();
-    TMDB_KEY = key;
-    lsSet('fo_key', key);
+    TMDB_KEY = key; lsSet('fo_key', key);
     closeModal('settingsModal');
-    toast('✓ API anahtarı güncellendi');
+    toast('✓ TMDB anahtarı güncellendi');
     loadDiscover();
-  } catch {
-    toast('❌ Geçersiz anahtar');
-  }
+  } catch { toast('❌ Geçersiz TMDB anahtarı'); }
+}
+
+function updateOmdbKey() {
+  const key = document.getElementById('omdbKeyInput').value.trim();
+  OMDB_KEY  = key;
+  lsSet('fo_omdb', key);
+  closeModal('settingsModal');
+  toast(key ? '✓ OMDb anahtarı kaydedildi — IMDb puanları aktif' : 'OMDb anahtarı temizlendi');
 }
 
 function clearAll() {
   if (!confirm('Tüm puanlar, izle listesi ve önbellek silinecek. Emin misin?')) return;
   ratings = {}; watchlist = {}; metaCache = {};
+  currentPage = 1;
   saveAll();
   closeModal('settingsModal');
   toast('Veriler temizlendi');
@@ -451,6 +585,7 @@ function initNav() {
   document.querySelectorAll('[data-page]').forEach(tab => {
     tab.addEventListener('click', () => {
       const page = tab.dataset.page;
+      activePage = page;
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('[data-page]').forEach(t => t.classList.remove('active'));
       document.getElementById('page-' + page).classList.add('active');
@@ -477,16 +612,16 @@ const TV_GENRES = [
 
 function buildChips() {
   const genres = currentType === 'movie' ? MOVIE_GENRES : TV_GENRES;
-  const row = document.getElementById('chipRow');
+  const row    = document.getElementById('chipRow');
   row.innerHTML = '';
   genres.forEach(g => {
-    const c = document.createElement('div');
-    c.className = 'chip' + (g.id === currentGenre ? ' active' : '');
+    const c      = document.createElement('div');
+    c.className  = 'chip' + (g.id === currentGenre ? ' active' : '');
     c.textContent = g.label;
     c.onclick = () => {
-      currentGenre = g.id;
-      currentSearch = '';
+      currentGenre = g.id; currentSearch = ''; currentPage = 1;
       document.getElementById('searchInput').value = '';
+      document.getElementById('searchClear').classList.remove('visible');
       row.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
       c.classList.add('active');
       loadDiscover();
@@ -496,80 +631,132 @@ function buildChips() {
 }
 
 function setType(type, btn) {
-  currentType = type;
-  currentGenre = '';
-  currentSearch = '';
+  currentType = type; currentGenre = ''; currentSearch = ''; currentPage = 1;
   document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   buildChips();
   loadDiscover();
 }
 
+// ══ SEARCH ══
+function onSearchInput(val) {
+  document.getElementById('searchClear').classList.toggle('visible', val.length > 0);
+}
+function clearSearch() {
+  const inp = document.getElementById('searchInput');
+  inp.value = ''; inp.focus();
+  document.getElementById('searchClear').classList.remove('visible');
+  currentSearch = ''; currentPage = 1;
+  loadDiscover();
+}
 function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
-  currentSearch = q;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  currentSearch = q; currentPage = 1;
   loadDiscover();
 }
 
 // ══ DISCOVER ══
-async function loadDiscover() {
-  const grid = document.getElementById('discoverGrid');
+async function loadDiscover(append = false) {
+  const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
-  grid.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor...</div>';
+  const moreBtn = document.getElementById('loadMoreBtn');
+
+  if (!append) {
+    grid.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor...</div>';
+    moreBtn.classList.remove('visible');
+  } else {
+    const spinner = document.createElement('div');
+    spinner.className = 'loading';
+    spinner.style.gridColumn = '1/-1';
+    spinner.id = 'appendSpinner';
+    spinner.innerHTML = '<div class="spinner"></div>Yükleniyor...';
+    grid.appendChild(spinner);
+    moreBtn.classList.remove('visible');
+  }
 
   try {
     let data;
     if (currentSearch) {
-      data = await tmdb(`/search/${currentType}`, { query: currentSearch, include_adult: false });
+      data = await tmdb(`/search/${currentType}`, { query: currentSearch, include_adult: false, page: currentPage });
       titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
     } else if (currentGenre) {
-      data = await tmdb(`/discover/${currentType}`, { with_genres: currentGenre, sort_by: 'popularity.desc' });
-      titleEl.innerHTML = (currentType === 'movie' ? 'Filmler' : 'Diziler') + ' <small></small>';
+      data = await tmdb(`/discover/${currentType}`, { with_genres: currentGenre, sort_by: 'popularity.desc', page: currentPage });
+      titleEl.innerHTML = `${currentType === 'movie' ? 'Filmler' : 'Diziler'} <small></small>`;
     } else {
-      data = await tmdb(`/${currentType}/popular`);
-      titleEl.innerHTML = (currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler') + ' <small></small>';
+      data = await tmdb(`/${currentType}/popular`, { page: currentPage });
+      titleEl.innerHTML = `${currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler'} <small></small>`;
     }
 
+    totalPages = data.total_pages || 1;
     const items = (data.results || []).slice(0, 20);
-    grid.innerHTML = '';
-    if (!items.length) {
+
+    if (append) {
+      document.getElementById('appendSpinner')?.remove();
+    } else {
+      grid.innerHTML = '';
+    }
+
+    if (!items.length && !append) {
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>Sonuç bulunamadı</h3><p>Farklı bir şey dene</p></div>';
       return;
     }
+
     items.forEach((item, i) => {
       const el = makeCard(item, currentType);
-      el.style.animationDelay = `${i * 25}ms`;
+      el.style.animationDelay = `${i * 20}ms`;
       grid.appendChild(el);
     });
+
+    if (currentPage < Math.min(totalPages, 10)) moreBtn.classList.add('visible');
+
   } catch {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API anahtarını kontrol et (⚙️)</p></div>';
+    if (append) {
+      document.getElementById('appendSpinner')?.remove();
+    } else {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API anahtarını kontrol et (⚙️)</p></div>';
+    }
   }
 }
 
-// ══ CARD FACTORY ══
+function loadMore() {
+  currentPage++;
+  loadDiscover(true);
+}
+
+// ══ CARD ══
 function makeCard(item, type) {
   const title = item.title || item.name || '—';
   const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
   const key   = `${type}_${item.id}`;
   const myR   = ratings[key];
   const inW   = !!watchlist[key];
+  // media_type gelebilir (trending endpoint'i karışık döndürür)
+  const resolvedType = item.media_type === 'tv' ? 'tv' : type;
 
-  const el = document.createElement('div');
-  el.className = 'card';
-  el.onclick = () => openDetail(item, type);
+  const el       = document.createElement('div');
+  el.className   = 'card';
+  el.onclick     = () => openDetail(item, resolvedType);
 
   const poster = item.poster_path
     ? `<img src="${IMG_W}${item.poster_path}" alt="${title}" loading="lazy">`
     : `<div class="card-ph">🎬</div>`;
 
+  // TMDB badge
+  const scoreBadge = item.vote_average > 0
+    ? `<div class="badge"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
+  // Kullanıcı puanı
+  const userBadge = myR ? `<div class="badge-u">★ ${myR}</div>` : '';
+  // İzle listesi
+  const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
+  // Dizi etiketi (arama/öneri karışık geldiğinde belli olsun)
+  const tvBadge = resolvedType === 'tv' ? `<div class="badge-tv">DİZİ</div>` : '';
+
   el.innerHTML = `
     ${poster}
-    ${item.vote_average > 0 ? `<div class="badge">⭐ ${item.vote_average.toFixed(1)}</div>` : ''}
-    ${myR ? `<div class="badge-u">★ ${myR}</div>` : ''}
-    ${inW && !myR ? `<div class="badge-w">🕐</div>` : ''}
+    ${scoreBadge}${userBadge}${watchBadge}${tvBadge}
     <div class="card-body">
       <div class="card-name" title="${title}">${title}</div>
       <div class="card-sub">
@@ -591,27 +778,40 @@ function openDetail(item, type) {
   const key   = `${type}_${item.id}`;
   const inW   = !!watchlist[key];
 
-  const stars = Array.from({length:10}, (_,i) => {
+  const stars = Array.from({ length: 10 }, (_, i) => {
     const n = i + 1;
     return `<span class="dstar ${n <= pendingRating ? 'on' : ''}"
       onmouseenter="hoverD(${n})" onmouseleave="resetD()"
       onclick="clickD(${n})">${n <= pendingRating ? '★' : '☆'}</span>`;
   }).join('');
 
+  const backdropHtml = item.backdrop_path
+    ? `<img class="detail-backdrop" src="${IMG_B}${item.backdrop_path}" alt="">`
+    : `<div class="detail-backdrop-ph">🎬</div>`;
+
   document.getElementById('detailContent').innerHTML = `
-    <button class="modal-close" onclick="closeModal('detailModal')" style="position:absolute;top:12px;right:12px;z-index:10">✕</button>
-    ${item.backdrop_path
-      ? `<img class="detail-backdrop" src="${IMG_B}${item.backdrop_path}" alt="">`
-      : `<div class="detail-backdrop" style="height:100px"></div>`}
+    <button class="modal-close" onclick="closeModal('detailModal')"
+      style="position:absolute;top:12px;right:12px;z-index:10">✕</button>
+    ${backdropHtml}
     <div class="detail-bd">
       <div class="detail-title">${title}</div>
-      <div class="detail-meta">
+      <div class="detail-scores" id="detailScores">
+        ${item.vote_average > 0
+          ? `<div class="score-pill score-tmdb">
+               <span class="score-label">TMDB</span>
+               <span class="score-val">⭐ ${item.vote_average.toFixed(1)}</span>
+             </div>` : ''}
+        <div id="imdbScorePill"></div>
+      </div>
+      <div class="detail-meta" id="detailMeta">
         <span>📅 ${year || '?'}</span>
-        <span>⭐ ${item.vote_average > 0 ? item.vote_average.toFixed(1) + '/10' : '—'}</span>
         <span>${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
         ${item.original_language ? `<span>🌐 ${item.original_language.toUpperCase()}</span>` : ''}
+        <span id="detailRuntime"></span>
       </div>
-      ${item.overview ? `<div class="detail-overview">${item.overview}</div>` : ''}
+      <div class="genre-tags" id="detailGenres"></div>
+      ${item.overview ? `<div class="detail-overview">${item.overview}</div>` : '<div id="detailOverview"></div>'}
+      <div class="cast-row" id="detailCast"></div>
       <div class="rate-label">Puanın (1–10)</div>
       <div class="detail-stars" id="dStars">${stars}</div>
       <div class="detail-actions">
@@ -619,47 +819,118 @@ function openDetail(item, type) {
         <button class="btn btn-gold" id="watchBtn" onclick="toggleWatch()">
           ${inW ? '🕐 Listeden Çıkar' : '+ İzle Listesine Ekle'}
         </button>
+        <a id="imdbLink" class="btn btn-imdb" href="#" target="_blank" style="display:none">
+          <span style="font-weight:800;font-size:11px">IMDb</span>'de Gör ↗
+        </a>
         <button class="btn btn-ghost" onclick="closeModal('detailModal')">Kapat</button>
       </div>
     </div>
   `;
   openModal('detailModal');
+
+  // Arka planda tam detayları yükle
+  fetchDetailExtras(item.id, type);
+}
+
+async function fetchDetailExtras(id, type) {
+  try {
+    const [details, credits] = await Promise.all([
+      tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' }),
+      tmdb(`/${type}/${id}/credits`).catch(() => ({ cast: [] })),
+    ]);
+
+    // Runtime / Seasons
+    const runtimeEl = document.getElementById('detailRuntime');
+    if (runtimeEl) {
+      if (type === 'movie' && details.runtime) {
+        const h = Math.floor(details.runtime / 60);
+        const m = details.runtime % 60;
+        runtimeEl.textContent = `⏱ ${h > 0 ? h + 's ' : ''}${m}dk`;
+      } else if (type === 'tv' && details.number_of_seasons) {
+        runtimeEl.textContent = `📂 ${details.number_of_seasons} sezon`;
+      }
+    }
+
+    // Genres
+    const genreEl = document.getElementById('detailGenres');
+    if (genreEl && details.genres?.length) {
+      genreEl.innerHTML = details.genres.slice(0, 5)
+        .map(g => `<span class="genre-tag">${g.name}</span>`).join('');
+    }
+
+    // Overview (eğer item.overview yoktu)
+    const ovEl = document.getElementById('detailOverview');
+    if (ovEl && details.overview) ovEl.innerHTML = `<div class="detail-overview">${details.overview}</div>`;
+
+    // Cast
+    const castEl = document.getElementById('detailCast');
+    if (castEl && credits.cast?.length) {
+      castEl.innerHTML = credits.cast.slice(0, 8).map(p => `
+        <div class="cast-item">
+          ${p.profile_path
+            ? `<img class="cast-img" src="${IMG_FACE}${p.profile_path}" alt="${p.name}" loading="lazy">`
+            : `<div class="cast-img" style="background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>`}
+          <div class="cast-name">${p.name}</div>
+        </div>
+      `).join('');
+    }
+
+    // IMDb link + puan
+    const imdbId   = details.external_ids?.imdb_id;
+    const linkEl   = document.getElementById('imdbLink');
+    if (linkEl && imdbId) {
+      linkEl.href    = `https://www.imdb.com/title/${imdbId}/`;
+      linkEl.style.display = 'inline-flex';
+
+      // IMDb puanı (OMDb)
+      if (OMDB_KEY) {
+        const od = await omdb(imdbId);
+        const pillEl = document.getElementById('imdbScorePill');
+        if (pillEl && od?.imdbRating && od.imdbRating !== 'N/A') {
+          pillEl.innerHTML = `
+            <div class="score-pill score-imdb">
+              <span class="score-label">IMDb</span>
+              <span class="score-val">⭐ ${od.imdbRating}</span>
+            </div>`;
+        }
+      }
+    }
+
+  } catch {} // Sessiz fail — temel bilgiler zaten gösterildi
 }
 
 function hoverD(n) {
-  document.querySelectorAll('.dstar').forEach((s,i) => {
+  document.querySelectorAll('.dstar').forEach((s, i) => {
     s.textContent = i < n ? '★' : '☆';
     s.classList.toggle('on', i < n);
   });
 }
 function resetD() {
-  document.querySelectorAll('.dstar').forEach((s,i) => {
+  document.querySelectorAll('.dstar').forEach((s, i) => {
     s.textContent = i < pendingRating ? '★' : '☆';
     s.classList.toggle('on', i < pendingRating);
   });
 }
-function clickD(n) {
-  pendingRating = n;
-  resetD();
-}
+function clickD(n) { pendingRating = n; resetD(); }
 
 function saveRating() {
   if (!currentItem) { closeModal('detailModal'); return; }
   const { item, type } = currentItem;
   const key = `${type}_${item.id}`;
   if (pendingRating > 0) {
-    ratings[key] = pendingRating;
+    ratings[key]   = pendingRating;
     metaCache[key] = {
-      title: item.title || item.name,
+      title:  item.title || item.name,
       poster: item.poster_path,
-      year: (item.release_date || item.first_air_date || '').slice(0, 4),
+      year:   (item.release_date || item.first_air_date || '').slice(0, 4),
+      score:  item.vote_average,
       type,
     };
     saveAll();
     toast(`★ ${pendingRating}/10 kaydedildi`);
   }
   closeModal('detailModal');
-  loadDiscover();
+  if (activePage === 'discover') loadDiscover();
 }
 
 function toggleWatch() {
@@ -674,9 +945,10 @@ function toggleWatch() {
   } else {
     watchlist[key] = {
       id: item.id, type,
-      title: item.title || item.name,
+      title:  item.title || item.name,
       poster: item.poster_path,
-      year: (item.release_date || item.first_air_date || '').slice(0, 4),
+      year:   (item.release_date || item.first_air_date || '').slice(0, 4),
+      score:  item.vote_average || 0,
     };
     btn.textContent = '🕐 Listeden Çıkar';
     toast('✓ İzle listesine eklendi');
@@ -692,29 +964,24 @@ function renderWatchlist() {
   count.textContent = items.length ? `${items.length} içerik` : '';
 
   if (!items.length) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🕐</div><h3>İzle listesi boş</h3><p>Film veya dizi detayından "İzle Listesine Ekle" butonuna bas.</p></div>';
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🕐</div><h3>İzle listesi boş</h3><p>Bir filmin detayını açıp "İzle Listesine Ekle" butonuna bas.</p></div>';
     return;
   }
-
   grid.innerHTML = '';
   items.forEach(([key, d]) => {
     const fakeItem = {
       id: d.id, title: d.title, name: d.title,
       poster_path: d.poster,
       release_date: d.year, first_air_date: d.year,
-      vote_average: 0,
+      vote_average: d.score || 0,
     };
     const card = makeCard(fakeItem, d.type);
-
-    // Remove button
-    const rm = document.createElement('button');
+    const rm   = document.createElement('button');
     rm.textContent = 'Çıkar';
     rm.style.cssText = 'position:absolute;bottom:8px;right:8px;padding:3px 8px;border-radius:5px;border:1px solid rgba(224,85,85,.4);background:rgba(224,85,85,.08);color:var(--danger);font-size:10px;cursor:pointer;font-family:var(--sans)';
     rm.onclick = e => {
       e.stopPropagation();
-      delete watchlist[key];
-      saveAll();
-      renderWatchlist();
+      delete watchlist[key]; saveAll(); renderWatchlist();
       toast('İzle listesinden çıkarıldı');
     };
     card.appendChild(rm);
@@ -723,55 +990,90 @@ function renderWatchlist() {
 }
 
 // ══ RATED PAGE ══
+function setTypeFilter(el) {
+  document.querySelectorAll('[data-type-filter]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  typeFilter = el.dataset.typeFilter;
+  renderRated();
+}
+
+function setSort(el) {
+  document.querySelectorAll('[data-sort]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  sortMode = el.dataset.sort;
+  renderRated();
+}
+
 function renderRated() {
   const list  = document.getElementById('ratedList');
   const stats = document.getElementById('statsRow');
-  const keys  = Object.keys(ratings);
+  const allKeys = Object.keys(ratings);
 
-  const movies = keys.filter(k => k.startsWith('movie_')).length;
-  const series = keys.filter(k => k.startsWith('tv_')).length;
-  const avg    = keys.length
-    ? (keys.reduce((s,k) => s + ratings[k], 0) / keys.length).toFixed(1)
-    : '—';
+  const movies = allKeys.filter(k => k.startsWith('movie_')).length;
+  const series = allKeys.filter(k => k.startsWith('tv_')).length;
+  const avg    = allKeys.length
+    ? (allKeys.reduce((s, k) => s + ratings[k], 0) / allKeys.length).toFixed(1) : '—';
 
   stats.innerHTML = `
-    <div class="stat"><div class="stat-n">${keys.length}</div><div class="stat-l">Toplam</div></div>
+    <div class="stat"><div class="stat-n">${allKeys.length}</div><div class="stat-l">Toplam</div></div>
     <div class="stat"><div class="stat-n">${movies}</div><div class="stat-l">Film</div></div>
     <div class="stat"><div class="stat-n">${series}</div><div class="stat-l">Dizi</div></div>
     <div class="stat"><div class="stat-n">${avg}</div><div class="stat-l">Ort. Puan</div></div>
   `;
 
+  // Tür filtresi
+  let keys = allKeys;
+  if (typeFilter === 'movie') keys = allKeys.filter(k => k.startsWith('movie_'));
+  if (typeFilter === 'tv')    keys = allKeys.filter(k => k.startsWith('tv_'));
+
   if (!keys.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>';
+    const msg = typeFilter === 'all'
+      ? '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>'
+      : `<div class="empty"><div class="empty-icon">${typeFilter === 'movie' ? '🎬' : '📺'}</div><h3>Bu türde puanlanan içerik yok</h3></div>`;
+    list.innerHTML = msg;
     return;
   }
 
+  const sorted = [...keys].sort((a, b) => {
+    const ma = metaCache[a] || {}, mb = metaCache[b] || {};
+    if (sortMode === 'rating') return ratings[b] - ratings[a];
+    if (sortMode === 'alpha')  return (ma.title || '').localeCompare(mb.title || '', 'tr');
+    if (sortMode === 'year')   return (mb.year  || '0').localeCompare(ma.year  || '0');
+    return 0;
+  });
+
   list.innerHTML = '';
-  [...keys].sort((a,b) => ratings[b]-ratings[a]).forEach(key => {
+  sorted.forEach(key => {
     const meta   = metaCache[key] || {};
     const rating = ratings[key];
     const type   = key.split('_')[0];
-
-    const el = document.createElement('div');
+    const el     = document.createElement('div');
     el.className = 'rated-item';
 
     const thumb = meta.poster
       ? `<div class="rated-thumb"><img src="${IMG_W}${meta.poster}" alt=""></div>`
       : `<div class="rated-thumb">🎬</div>`;
 
-    const stars = Array.from({length:10}, (_,i) => {
+    const stars = Array.from({ length: 10 }, (_, i) => {
       const n = i + 1;
       return `<span class="star ${n <= rating ? 'on' : ''}"
-        onmouseenter="hoverRatedRow(this.parentNode,${n})"
-        onmouseleave="resetRatedRow(this.parentNode,'${key}')"
-        onclick="updateRating('${key}',${n},this.parentNode)">${n <= rating ? '★' : '☆'}</span>`;
+        onmouseenter="hoverRated(this.closest('.star-row'),${n})"
+        onmouseleave="resetRated(this.closest('.star-row'),'${key}')"
+        onclick="updateRating('${key}',${n},this.closest('.star-row'))">${n <= rating ? '★' : '☆'}</span>`;
     }).join('');
+
+    const scoreBit = meta.score > 0
+      ? `<span class="rated-imdb" title="TMDB Puanı">TMDB ${meta.score.toFixed(1)}</span>` : '';
 
     el.innerHTML = `
       ${thumb}
       <div class="rated-info">
         <div class="rated-name" title="${meta.title || key}">${meta.title || key}</div>
-        <div class="rated-sub">${meta.year || ''}${meta.year ? ' · ' : ''}${type === 'tv' ? 'Dizi' : 'Film'}</div>
+        <div class="rated-sub">
+          <span class="rated-type-pill">${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
+          ${meta.year ? `<span>${meta.year}</span>` : ''}
+          ${scoreBit}
+        </div>
         <div class="star-row">${stars}</div>
       </div>
       <button class="del-btn" onclick="deleteRating('${key}')">Sil</button>
@@ -780,28 +1082,26 @@ function renderRated() {
   });
 }
 
-function hoverRatedRow(row, n) {
-  row.querySelectorAll('.star').forEach((s,i) => {
+function hoverRated(row, n) {
+  row.querySelectorAll('.star').forEach((s, i) => {
     s.textContent = i < n ? '★' : '☆';
     s.classList.toggle('on', i < n);
   });
 }
-function resetRatedRow(row, key) {
+function resetRated(row, key) {
   const r = ratings[key] || 0;
-  row.querySelectorAll('.star').forEach((s,i) => {
+  row.querySelectorAll('.star').forEach((s, i) => {
     s.textContent = i < r ? '★' : '☆';
     s.classList.toggle('on', i < r);
   });
 }
 function updateRating(key, n, row) {
-  ratings[key] = n;
-  saveAll();
-  resetRatedRow(row, key);
+  ratings[key] = n; saveAll();
+  resetRated(row, key);
   toast(`★ ${n}/10`);
 }
 function deleteRating(key) {
-  delete ratings[key];
-  saveAll();
+  delete ratings[key]; saveAll();
   renderRated();
   toast('Silindi');
 }
@@ -812,29 +1112,30 @@ async function loadRecommendations() {
   const keys = Object.keys(ratings);
 
   if (keys.length < 3) {
-    cnt.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><h3>Öneri için film puanla</h3><p>En az 3 içerik puanladıktan sonra kişisel öneriler burada görünür.</p></div>';
+    cnt.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><h3>Öneri için içerik puanla</h3><p>En az 3 film veya dizi puanladıktan sonra kişisel öneriler burada görünür.</p></div>';
     return;
   }
 
   cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
 
-  // Rated IDs to exclude
-  const ratedIds = new Set(keys.map(k => {
-    const parts = k.split('_');
-    return parts.slice(1).join('_');
-  }));
+  const ratedIds = new Set(
+    keys.filter(k => !k.includes('_imdb_')).map(k => {
+      const parts = k.split('_');
+      return parts.slice(1).join(''); // movie_12345 → 12345
+    })
+  );
 
-  // Top rated, sorted, skip unresolved imdb imports
   const topRated = [...keys]
     .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'))
-    .sort((a,b) => ratings[b] - ratings[a]);
+    .sort((a, b) => ratings[b] - ratings[a]);
 
   const sections = [];
 
-  // 1. Item-based recommendations from top 4 rated
+  // 1. İçerik bazlı öneriler
   for (const key of topRated.slice(0, 4)) {
-    const [type, ...idParts] = key.split('_');
-    const id = idParts.join('_');
+    const parts  = key.split('_');
+    const type   = parts[0];
+    const id     = parts.slice(1).join('_');
     try {
       const [recData, itemData] = await Promise.all([
         tmdb(`/${type}/${id}/recommendations`),
@@ -849,39 +1150,39 @@ async function loadRecommendations() {
     } catch {}
   }
 
-  // 2. Genre-weighted discover
+  // 2. Tür ağırlıklı discover
   const genreWeight = {};
   for (const key of topRated.slice(0, 8)) {
-    const [type, ...idParts] = key.split('_');
-    const id = idParts.join('_');
+    const parts = key.split('_');
+    const type  = parts[0];
+    const id    = parts.slice(1).join('_');
     try {
       const d = await tmdb(`/${type}/${id}`);
       (d.genres || []).forEach(g => {
-        genreWeight[`${type}_${g.id}`] = (genreWeight[`${type}_${g.id}`] || 0) + ratings[key];
+        const gk = `${type}|${g.id}`;
+        genreWeight[gk] = (genreWeight[gk] || 0) + ratings[key];
       });
     } catch {}
   }
 
-  const topGenreEntry = Object.entries(genreWeight).sort((a,b) => b[1]-a[1])[0];
+  const topGenreEntry = Object.entries(genreWeight).sort((a, b) => b[1] - a[1])[0];
   if (topGenreEntry) {
-    const [typeGenre, genreId] = topGenreEntry[0].split('_');
+    const [tg, gid] = topGenreEntry[0].split('|'); // | ayracı kullandık — _ problemi yok
     try {
       const [gData, gList] = await Promise.all([
-        tmdb(`/discover/${typeGenre}`, { with_genres: genreId, sort_by: 'vote_average.desc', 'vote_count.gte': 400 }),
-        tmdb(`/genre/${typeGenre}/list`),
+        tmdb(`/discover/${tg}`, { with_genres: gid, sort_by: 'vote_average.desc', 'vote_count.gte': 400 }),
+        tmdb(`/genre/${tg}/list`),
       ]);
-      const genreName = gList.genres.find(g => g.id === parseInt(genreId))?.name || 'Tür';
+      const genreName = (gList.genres || []).find(g => g.id === parseInt(gid))?.name || 'Tür';
       const items = (gData.results || [])
         .filter(r => !ratedIds.has(String(r.id)))
         .slice(0, 12)
-        .map(r => ({ ...r, _type: typeGenre }));
-      if (items.length >= 2) {
-        sections.push({ label: `En iyi ${genreName} ${typeGenre === 'tv' ? 'dizileri' : 'filmleri'}`, items });
-      }
+        .map(r => ({ ...r, _type: tg }));
+      if (items.length >= 2) sections.push({ label: `En iyi ${genreName} ${tg === 'tv' ? 'dizileri' : 'filmleri'}`, items });
     } catch {}
   }
 
-  // 3. Trending
+  // 3. Trend
   try {
     const trend = await tmdb('/trending/all/week');
     const items = (trend.results || [])
@@ -898,27 +1199,40 @@ async function loadRecommendations() {
   }
 
   sections.forEach(sec => {
-    const row = document.createElement('div');
+    const row   = document.createElement('div');
     row.className = 'rec-row';
     const strip = document.createElement('div');
     strip.className = 'rec-strip';
     sec.items.forEach(item => strip.appendChild(makeCard(item, item._type)));
+
+    const wrap   = document.createElement('div');
+    wrap.className = 'rec-strip-wrap';
+    const aL     = document.createElement('button');
+    aL.className = 'rec-arrow left'; aL.innerHTML = '‹';
+    aL.onclick   = () => strip.scrollBy({ left: -320, behavior: 'smooth' });
+    const aR     = document.createElement('button');
+    aR.className = 'rec-arrow right'; aR.innerHTML = '›';
+    aR.onclick   = () => strip.scrollBy({ left: 320, behavior: 'smooth' });
+    wrap.appendChild(aL); wrap.appendChild(strip); wrap.appendChild(aR);
+
     row.innerHTML = `<div class="rec-label">${sec.label}</div>`;
-    row.appendChild(strip);
+    row.appendChild(wrap);
     cnt.appendChild(row);
   });
 }
 
 // ══ IMPORT ══
-function handleDragOver(e) {
-  e.preventDefault();
-  document.getElementById('dropZone').classList.add('over');
+function imdbTypeToTmdb(typeRaw) {
+  const t = typeRaw.toLowerCase().replace(/\s/g,'');
+  if (t.includes('tvseries')||t.includes('tvmini')||t.includes('tvspecial')||
+      t.includes('tvepisode')||t.includes('series')) return 'tv';
+  return 'movie';
 }
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('over'); }
 function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('dropZone').classList.remove('over');
-  const f = e.dataTransfer.files[0];
-  if (f) handleFile(f);
+  e.preventDefault(); document.getElementById('dropZone').classList.remove('over');
+  const f = e.dataTransfer.files[0]; if (f) handleFile(f);
 }
 
 async function handleFile(file) {
@@ -929,86 +1243,71 @@ async function handleFile(file) {
 
   const idIdx  = cols.findIndex(c => /const/i.test(c));
   const ratIdx = cols.findIndex(c => /your.?rating/i.test(c));
-  const titIdx = cols.findIndex(c => /^title$/i.test(c));
+  const titIdx = cols.findIndex(c => /^"?title"?$/i.test(c));
   const typIdx = cols.findIndex(c => /title.?type/i.test(c));
 
   if (idIdx === -1 || ratIdx === -1) {
-    showImportAlert('err', '❌ IMDb CSV formatı tanınamadı. "ratings.csv" dosyasını denedin mi?');
+    showImportAlert('err','❌ IMDb CSV formatı tanınamadı. "ratings.csv" dosyasını kullandığından emin ol.');
     return;
   }
 
   const rows = lines.slice(1).map(parseCSVLine).filter(r => r[idIdx] && r[ratIdx]);
-  if (!rows.length) { showImportAlert('err', '❌ Hiç satır bulunamadı'); return; }
+  if (!rows.length) { showImportAlert('err','❌ Hiç satır bulunamadı'); return; }
 
   const pw = document.getElementById('progressWrap');
   const pf = document.getElementById('progressFill');
   const pt = document.getElementById('progressText');
   pw.style.display = 'block';
-  showImportAlert('', '');
+  showImportAlert('','');
 
   let done = 0, success = 0, fail = 0;
 
-  // Process in batches of 5 (TMDB rate limit friendly)
   for (let i = 0; i < rows.length; i += 5) {
-    await Promise.all(rows.slice(i, i + 5).map(async row => {
+    await Promise.all(rows.slice(i, i+5).map(async row => {
       const imdbId  = row[idIdx]?.trim();
       const rating  = parseInt(row[ratIdx]);
       const title   = row[titIdx]?.trim() || '';
-      const typeRaw = (row[typIdx] || '').trim().toLowerCase();
-
+      const typeRaw = (row[typIdx] || '').trim();
       if (!imdbId || isNaN(rating)) { done++; fail++; return; }
-
-      const isTv = typeRaw.includes('tv') || typeRaw.includes('series') || typeRaw.includes('episode');
-
+      const type = imdbTypeToTmdb(typeRaw);
       try {
         const found = await fetch(
           `${BASE}/find/${imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id&language=tr-TR`
         ).then(r => r.json());
-
-        const results = isTv
-          ? (found.tv_results || [])
-          : (found.movie_results || []);
-
-        const type = isTv ? 'tv' : 'movie';
-
+        const results = type === 'tv' ? (found.tv_results||[]) : (found.movie_results||[]);
         if (results.length) {
-          const m = results[0];
+          const m   = results[0];
           const key = `${type}_${m.id}`;
-          ratings[key]   = rating; // store as-is (1-10)
+          ratings[key]   = rating;
           metaCache[key] = {
             title:  m.title || m.name || title,
             poster: m.poster_path,
-            year:   (m.release_date || m.first_air_date || '').slice(0, 4),
+            year:   (m.release_date || m.first_air_date || '').slice(0,4),
+            score:  m.vote_average || 0,
             type,
           };
-          success++;
         } else {
-          // Fallback: store with imdb id, won't have poster
           const key = `${type}_imdb_${imdbId}`;
           ratings[key] = rating;
-          if (title) metaCache[key] = { title, year:'', poster:null, type };
-          success++;
+          if (title) metaCache[key] = { title, year:'', poster:null, score:0, type };
         }
-      } catch {
-        fail++;
-      }
+        success++;
+      } catch { fail++; }
       done++;
     }));
-
-    pf.style.width = Math.round((done / rows.length) * 100) + '%';
-    pt.textContent = `${done} / ${rows.length} işlendi...`;
+    pf.style.width  = Math.round((done/rows.length)*100)+'%';
+    pt.textContent  = `${done} / ${rows.length} işlendi...`;
     saveAll();
-    if (i + 5 < rows.length) await sleep(150);
+    if (i+5 < rows.length) await sleep(120);
   }
 
   pw.style.display = 'none';
-  pf.style.width = '0%';
+  pf.style.width   = '0%';
   saveAll();
   showImportAlert('ok',
     `✅ ${success} puan içe aktarıldı${fail ? ` · ${fail} eşleştirilemedi` : ''}. "Öneriler" sekmesini kontrol et!`
   );
   toast(`${success} puan içe aktarıldı`);
-  // Reset file input
   document.getElementById('csvFile').value = '';
 }
 
@@ -1016,7 +1315,7 @@ function parseCSVLine(line) {
   const res = []; let cur = ''; let inQ = false;
   for (const ch of line) {
     if (ch === '"') { inQ = !inQ; continue; }
-    if (ch === ',' && !inQ) { res.push(cur.trim()); cur = ''; continue; }
+    if (ch === ',' && !inQ) { res.push(cur.trim()); cur=''; continue; }
     cur += ch;
   }
   res.push(cur.trim());
@@ -1024,28 +1323,16 @@ function parseCSVLine(line) {
 }
 
 function showImportAlert(type, msg) {
-  const el = document.getElementById('importAlert');
-  el.className = `alert${type === 'ok' ? ' alert-ok' : type === 'err' ? ' alert-err' : ''}`;
+  const el    = document.getElementById('importAlert');
+  el.className= `alert${type==='ok'?' alert-ok':type==='err'?' alert-err':''}`;
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
 }
 
-// ══ OVERLAY CLOSE ON BG CLICK ══
-['importModal','settingsModal','detailModal'].forEach(id => {
-  document.getElementById(id).addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeModal(id);
-  });
-});
-
 // ══ INIT ══
 initNav();
 buildChips();
-
-if (false && !TMDB_KEY) {
-  openModal('apikeyModal');
-} else {
-  loadDiscover();
-}
+if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
 </script>
 </body>
 </html>
