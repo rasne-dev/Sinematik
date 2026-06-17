@@ -353,7 +353,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
         <span class="bar-chip active" data-sort="rating" onclick="setSort(this)">Puana Göre</span>
-        <span class="bar-chip"        data-sort="rating_desc" onclick="setSort(this)">IMDb (Yüksek)</span>
+        <span class="bar-chip"        data-sort="rating_desc" onclick="setRecRating(this)">IMDb (Yüksek)</span>
         <span class="bar-chip"        data-sort="alpha"  onclick="setSort(this)">A–Z</span>
         <span class="bar-chip"        data-sort="year"   onclick="setSort(this)">Yıl</span>
       </div>
@@ -493,6 +493,23 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 </div>
 
 <script>
+// ══ STORAGE HELPERS ══
+function ls(k)          { return localStorage.getItem(k); }
+function lsSet(k, v)    { localStorage.setItem(k, v); }
+function lsJSON(k, def) { try { return JSON.parse(ls(k)) || def; } catch { return def; } }
+function saveAll() {
+  lsSet('fo_ratings', JSON.stringify(ratings));
+  lsSet('fo_watch',   JSON.stringify(watchlist));
+  lsSet('fo_meta',    JSON.stringify(metaCache));
+}
+
+// ══ INIT APP ══
+document.addEventListener('DOMContentLoaded', () => {
+    initNav();
+    buildFilterGenres();
+    if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
+});
+
 // ══ COOKIES ══
 function acceptCookies() {
   lsSet('cookies_accepted', 'true');
@@ -557,16 +574,7 @@ let pendingRating = 0;
 let sortMode      = 'rating';
 let typeFilter    = 'all';
 let activePage    = 'discover';
-
-// ══ STORAGE ══
-function ls(k)          { return localStorage.getItem(k); }
-function lsSet(k, v)    { localStorage.setItem(k, v); }
-function lsJSON(k, def) { try { return JSON.parse(ls(k)) || def; } catch { return def; } }
-function saveAll() {
-  lsSet('fo_ratings', JSON.stringify(ratings));
-  lsSet('fo_watch',   JSON.stringify(watchlist));
-  lsSet('fo_meta',    JSON.stringify(metaCache));
-}
+let nsfwFilter    = ls('fo_nsfw') !== 'false';
 
 // ══ API ══
 async function tmdb(path, params = {}) {
@@ -1241,12 +1249,12 @@ function renderRated() {
         <div class="rated-name" title="${meta.title || key}">${meta.title || key}</div>
         <div class="rated-sub">
           <span class="rated-type-pill">${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
-          ${meta.year ? `<span>${meta.year}</span>' : ''}
+          ${meta.year ? `<span>${meta.year}</span>` : ''}
           ${scoreBit}
         </div>
         <div class="star-row">${stars}</div>
       </div>
-      <button class="del-btn" onclick="deleteRating('${key}')">Sil</button>
+      <button class="btn del-btn" onclick="deleteRating('${key}')">Sil</button>
     `;
     list.appendChild(el);
   });
@@ -1496,11 +1504,6 @@ function showImportAlert(type, msg) {
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
 }
-
-// ══ INIT ══
-initNav();
-buildFilterGenres();
-if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
 </script>
 </body>
 </html>
