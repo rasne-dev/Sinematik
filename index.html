@@ -292,8 +292,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Türler (Çoklu):</span>
       <div id="filterGenres" class="bar-chips"></div>
       <div class="bar-divider"></div>
-      <span class="bar-label">Min Puan:</span>
-      <input type="number" id="filterMinRating" value="0" min="0" max="10" step="0.5" style="width:50px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px">
+      <span class="bar-label">Min Puan: <span id="minRatingVal">0</span></span>
+      <input type="range" id="filterMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('minRatingVal').textContent = this.value">
       <button class="btn btn-purple" onclick="applyAdvancedFilters()" style="padding:4px 10px;font-size:11px">Uygula</button>
     </div>
     <div class="section-title" id="discoverTitle">Popüler Filmler <small></small></div>
@@ -320,8 +320,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         <span class="bar-chip" data-rec-type="tv" onclick="setRecType(this, 'tv')">📺 Dizi</span>
       </div>
       <div class="bar-divider"></div>
-      <span class="bar-label">Min. Puan:</span>
-      <input type="number" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:50px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px">
+      <span class="bar-label">Min. Puan: <span id="recMinRatingVal">0</span></span>
+      <input type="range" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('recMinRatingVal').textContent = this.value">
       <button class="btn btn-purple" onclick="applyRecFilters()" style="padding:4px 10px;font-size:11px">Uygula</button>
       <div class="bar-divider"></div>
       <span class="bar-label">Sırala:</span>
@@ -1027,11 +1027,6 @@ async function fetchDetailExtras(id, type) {
          certification = tr?.rating || 'Bilinmiyor';
       }
       
-      // Filter logic: compare certification with user age filter
-      if (ageFilter !== 'all' && parseInt(certification) > parseInt(ageFilter)) {
-          // This logic is simple; doesn't fully hide content, just signals it.
-          // Full hiding would require filtering the Discover/Recommendations lists.
-      }
       ratingEl.textContent = `🔞 ${certification}`;
     }
 
@@ -1318,18 +1313,16 @@ function setRecType(el, type) {
   renderRecommendations();
 }
 
-function setRecRating(el) {
-  document.querySelectorAll('#recFilterBar [data-rec-rating]').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  recMinRating = parseInt(el.dataset.recRating);
-  displayedRecsCount = RECS_PER_PAGE;
-  renderRecommendations();
-}
-
 function setRecSort(el, mode) {
   document.querySelectorAll('#recFilterBar [data-rec-sort]').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   recSortMode = mode;
+  displayedRecsCount = RECS_PER_PAGE;
+  renderRecommendations();
+}
+
+function applyRecFilters() {
+  recMinRating = parseFloat(document.getElementById('recMinRating').value) || 0;
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations();
 }
