@@ -241,6 +241,11 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 
 /* MOBILE */
 .mobile-nav{display:none}
+
+/* COOKIE BANNER */
+.cookie-banner{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);padding:12px;text-align:center;font-size:12px;border-top:1px solid var(--border);z-index:999;display:none}
+.cookie-banner button{margin-left:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+.cookie-banner button:hover{border-color:var(--accent2)}
 @media(max-width:640px){
   nav.topnav{padding:0 14px;gap:8px}
   .nav-tabs{display:none}
@@ -332,6 +337,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
         <span class="bar-chip active" data-sort="rating" onclick="setSort(this)">Puana Göre</span>
+        <span class="bar-chip"        data-sort="rating_desc" onclick="setSort(this)">IMDb (Yüksek)</span>
         <span class="bar-chip"        data-sort="alpha"  onclick="setSort(this)">A–Z</span>
         <span class="bar-chip"        data-sort="year"   onclick="setSort(this)">Yıl</span>
       </div>
@@ -448,7 +454,21 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 <div class="toast" id="toast"></div>
 <div class="preview-tooltip" id="previewTooltip"></div>
 
+<div class="cookie-banner" id="cookieBanner">
+  Bu site, puanlarını kaydetmek için yerel depolama (localStorage) kullanmaktadır.
+  <button onclick="acceptCookies()">Anladım</button>
+</div>
+
 <script>
+// ══ COOKIES ══
+function acceptCookies() {
+  lsSet('cookies_accepted', 'true');
+  document.getElementById('cookieBanner').style.display = 'none';
+}
+if (!ls('cookies_accepted')) {
+  document.getElementById('cookieBanner').style.display = 'block';
+}
+
 // ══ CONFIG ══
 const BASE      = 'https://api.tmdb.org/3';
 const OMDB_BASE = 'https://www.omdbapi.com';
@@ -744,7 +764,7 @@ function makeCard(item, type) {
 
   let hoverTimer;
   el.addEventListener('mouseenter', () => {
-    hoverTimer = setTimeout(() => showPreview(item, resolvedType, el), 2000);
+    hoverTimer = setTimeout(() => showPreview(item, resolvedType, el), 1000);
   });
   el.addEventListener('mouseleave', () => {
     clearTimeout(hoverTimer);
@@ -1078,6 +1098,7 @@ function renderRated() {
   const sorted = [...keys].sort((a, b) => {
     const ma = metaCache[a] || {}, mb = metaCache[b] || {};
     if (sortMode === 'rating') return ratings[b] - ratings[a];
+    if (sortMode === 'rating_desc') return (mb.score || 0) - (ma.score || 0);
     if (sortMode === 'alpha')  return (ma.title || '').localeCompare(mb.title || '', 'tr');
     if (sortMode === 'year')   return (mb.year  || '0').localeCompare(ma.year  || '0');
     return 0;
