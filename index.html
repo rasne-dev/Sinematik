@@ -293,7 +293,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <div class="loading"><div class="spinner"></div>Yükleniyor...</div>
     </div>
     <div class="load-more-wrap">
-      <button class="load-more-btn" id="loadMoreBtn" onclick="loadMore()">Daha fazla yükle</button>
+      <div id="scrollTrigger" style="height: 20px;"></div>
     </div>
   </div>
 
@@ -684,13 +684,31 @@ function doSearch() {
   loadDiscover();
 }
 
+// ══ INFINITE SCROLL ══
+const observer = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting && document.getElementById('loadMoreBtn')?.classList.contains('visible')) {
+    loadMore();
+  }
+}, { threshold: 0.1 });
+
+// Initialize observer
+setTimeout(() => observer.observe(document.getElementById('scrollTrigger')), 1000);
+
 // ══ DISCOVER ══
 async function loadDiscover(append = false) {
-  console.log("Loading discover, TMDB_KEY:", TMDB_KEY);
   const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
+  
+  // Use a hidden button to maintain existing logic for checking if more pages exist
+  if (!document.getElementById('loadMoreBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'loadMoreBtn';
+      btn.className = 'load-more-btn';
+      btn.onclick = loadMore;
+      btn.style.display = 'none';
+      document.body.appendChild(btn);
+  }
   const moreBtn = document.getElementById('loadMoreBtn');
-  // ...
 
   if (!append) {
     grid.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor...</div>';
@@ -1159,6 +1177,24 @@ function deleteRating(key) {
 }
 
 // ══ RECOMMENDATIONS ══
+let recGenreFilter = '';
+let recMinRating   = 0;
+let allRecommendations = [];
+
+function setRecGenre(el, genreId) {
+  document.querySelectorAll('#recGenreChips .bar-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  recGenreFilter = genreId;
+  renderRecommendations();
+}
+
+function setRecRating(el) {
+  document.querySelectorAll('#recFilterBar [data-rec-rating]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  recMinRating = parseInt(el.dataset.recRating);
+  renderRecommendations();
+}
+
 async function loadRecommendations() {
   const cnt  = document.getElementById('recContent');
   const keys = Object.keys(ratings);
@@ -1169,114 +1205,69 @@ async function loadRecommendations() {
   }
 
   cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
-
-  const ratedIds = new Set(
-    keys.filter(k => !k.includes('_imdb_')).map(k => {
-      const parts = k.split('_');
-      return parts.slice(1).join('');
-    })
-  );
-
+  
+  const ratedIds = new Set(keys.map(k => k.split('_').slice(1).join('')));
   const topRated = [...keys]
     .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'))
     .sort((a, b) => ratings[b] - ratings[a]);
 
-  const sections = [];
+  let fetchedItems = [];
+  const uniqueGenres = new Map();
+  uniqueGenres.set('', 'Tümü');
 
-  // 1. İçerik bazlı öneriler
+  // Fetch a mix of recommendations
   for (const key of topRated.slice(0, 4)) {
-    const parts  = key.split('_');
-    const type   = parts[0];
-    const id     = parts.slice(1).join('_');
-    try {
-      const [recData, itemData] = await Promise.all([
-        tmdb(`/${type}/${id}/recommendations`),
-        tmdb(`/${type}/${id}`),
-      ]);
-      const srcTitle = itemData.title || itemData.name;
-      const recs = (recData.results || [])
-        .filter(r => !ratedIds.has(String(r.id)))
-        .slice(0, 12)
-        .map(r => ({ ...r, _type: type }));
-      if (recs.length >= 2) sections.push({ label: `"${srcTitle}" beğendiysen`, items: recs });
-    } catch {}
-  }
-
-  // 2. Tür ağırlıklı discover
-  const genreWeight = {};
-  for (const key of topRated.slice(0, 8)) {
     const parts = key.split('_');
     const type  = parts[0];
     const id    = parts.slice(1).join('_');
     try {
-      const d = await tmdb(`/${type}/${id}`);
-      (d.genres || []).forEach(g => {
-        const gk = `${type}|${g.id}`;
-        genreWeight[gk] = (genreWeight[gk] || 0) + ratings[key];
-      });
+      const recData = await tmdb(`/${type}/${id}/recommendations`);
+      const items = (recData.results || []).filter(r => !ratedIds.has(String(r.id)));
+      
+      for(const item of items) {
+        fetchedItems.push({ ...item, _type: type });
+        // Collect genres
+        (item.genre_ids || []).forEach(gid => {
+            if (!uniqueGenres.has(String(gid))) {
+                // Fetch genre name or use ID as label if not cached (lazy)
+                uniqueGenres.set(String(gid), 'Tür ' + gid); 
+            }
+        });
+      }
     } catch {}
   }
+  
+  allRecommendations = [...new Map(fetchedItems.map(item => [item.id, item])).values()];
+  
+  // Update Genre Chips
+  const chipRow = document.getElementById('recGenreChips');
+  chipRow.innerHTML = `<span class="bar-chip ${!recGenreFilter ? 'active' : ''}" onclick="setRecGenre(this, '')">Tümü</span>`;
+  uniqueGenres.forEach((label, id) => {
+    if(!id) return;
+    chipRow.innerHTML += `<span class="bar-chip ${recGenreFilter === id ? 'active' : ''}" onclick="setRecGenre(this, '${id}')">${label}</span>`;
+  });
 
-  const topGenreEntry = Object.entries(genreWeight).sort((a, b) => b[1] - a[1])[0];
-  if (topGenreEntry) {
-    const [tg, gid] = topGenreEntry[0].split('|');
-    try {
-      const [gData, gList] = await Promise.all([
-        tmdb(`/discover/${tg}`, { with_genres: gid, sort_by: 'vote_average.desc', 'vote_count.gte': 400 }),
-        tmdb(`/genre/${tg}/list`),
-      ]);
-      const genreName = (gList.genres || []).find(g => g.id === parseInt(gid))?.name || 'Tür';
-      const items = (gData.results || [])
-        .filter(r => !ratedIds.has(String(r.id)))
-        .slice(0, 12)
-        .map(r => ({ ...r, _type: tg }));
-      if (items.length >= 2) sections.push({ label: `En iyi ${genreName} ${tg === 'tv' ? 'dizileri' : 'filmleri'}`, items });
-    } catch {}
-  }
+  renderRecommendations();
+}
 
-  // 3. Trend
-  try {
-    const trend = await tmdb('/trending/all/week');
-    const items = (trend.results || [])
-      .filter(r => !ratedIds.has(String(r.id)))
-      .slice(0, 12)
-      .map(r => ({ ...r, _type: r.media_type || 'movie' }));
-    if (items.length >= 2) sections.push({ label: 'Bu hafta trend', items });
-  } catch {}
+function renderRecommendations() {
+  const cnt = document.getElementById('recContent');
+  let filtered = allRecommendations;
+  
+  if (recGenreFilter) filtered = filtered.filter(i => i.genre_ids && i.genre_ids.includes(parseInt(recGenreFilter)));
+  if (recMinRating)   filtered = filtered.filter(i => i.vote_average >= recMinRating);
 
-  cnt.innerHTML = '';
-  if (!sections.length) {
-    cnt.innerHTML = '<div class="empty"><div class="empty-icon">😔</div><h3>Öneri oluşturulamadı</h3><p>Daha fazla içerik puanlamayı dene.</p></div>';
+  if (!filtered.length) {
+    cnt.innerHTML = '<div class="empty">Sonuç bulunamadı.</div>';
     return;
   }
 
-  sections.forEach(sec => {
-    const row   = document.createElement('div');
-    row.className = 'rec-row';
-    const strip = document.createElement('div');
-    strip.className = 'rec-strip';
-    sec.items.forEach(item => strip.appendChild(makeCard(item, item._type)));
-
-    const wrap   = document.createElement('div');
-    wrap.className = 'rec-strip-wrap';
-    const aL     = document.createElement('button');
-    aL.className = 'rec-arrow left'; aL.innerHTML = '‹';
-    aL.onclick   = () => strip.scrollBy({ left: -320, behavior: 'smooth' });
-    const aR     = document.createElement('button');
-    aR.className = 'rec-arrow right'; aR.innerHTML = '›';
-    aR.onclick   = () => strip.scrollBy({ left: 320, behavior: 'smooth' });
-    wrap.appendChild(aL); wrap.appendChild(strip); wrap.appendChild(aR);
-
-    row.innerHTML = `<div class="rec-label">${sec.label}</div>`;
-    row.appendChild(wrap);
-    cnt.appendChild(row);
-  });
+  const grid = document.createElement('div');
+  grid.className = 'card-grid';
+  filtered.forEach(item => grid.appendChild(makeCard(item, item._type)));
   
-  const refreshBtn = document.createElement('button');
-  refreshBtn.className = 'load-more-btn visible';
-  refreshBtn.textContent = 'Tüm önerileri yenile';
-  refreshBtn.onclick = () => loadRecommendations();
-  cnt.appendChild(refreshBtn);
+  cnt.innerHTML = '';
+  cnt.appendChild(grid);
 }
 
 // ══ IMPORT ══
