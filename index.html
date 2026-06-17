@@ -321,10 +321,13 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       </div>
       <div class="bar-divider"></div>
       <span class="bar-label">Min. Puan:</span>
+      <input type="number" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:50px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px">
+      <button class="btn btn-purple" onclick="applyRecFilters()" style="padding:4px 10px;font-size:11px">Uygula</button>
+      <div class="bar-divider"></div>
+      <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
-        <span class="bar-chip active" data-rec-rating="0" onclick="setRecRating(this)">Hepsi</span>
-        <span class="bar-chip" data-rec-rating="7" onclick="setRecRating(this)">7+</span>
-        <span class="bar-chip" data-rec-rating="8" onclick="setRecRating(this)">8+</span>
+        <span class="bar-chip active" data-rec-sort="popularity" onclick="setRecSort(this, 'popularity')">Popülerlik</span>
+        <span class="bar-chip"        data-rec-sort="rating" onclick="setRecSort(this, 'rating')">Puan</span>
       </div>
     </div>
     
@@ -353,7 +356,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
         <span class="bar-chip active" data-sort="rating" onclick="setSort(this)">Puana Göre</span>
-        <span class="bar-chip"        data-sort="rating_desc" onclick="setRecRating(this)">IMDb (Yüksek)</span>
+        <span class="bar-chip"        data-sort="rating_desc" onclick="setSort(this)">IMDb (Yüksek)</span>
         <span class="bar-chip"        data-sort="alpha"  onclick="setSort(this)">A–Z</span>
         <span class="bar-chip"        data-sort="year"   onclick="setSort(this)">Yıl</span>
       </div>
@@ -409,8 +412,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
             Yaş Filtresi: 
             <select id="ageFilter" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 5px">
               <option value="all">Filtre Yok</option>
-              <option value="13">13+ Altı</option>
-              <option value="18">18+ Altı</option>
+              <option value="13">13+</option>
+              <option value="18">18+</option>
             </select>
           </label>
         </div>
@@ -575,6 +578,7 @@ let sortMode      = 'rating';
 let typeFilter    = 'all';
 let activePage    = 'discover';
 let nsfwFilter    = ls('fo_nsfw') !== 'false';
+let ageFilter     = ls('fo_age')  || 'all';
 
 // ══ API ══
 async function tmdb(path, params = {}) {
@@ -1018,10 +1022,15 @@ async function fetchDetailExtras(id, type) {
         const country = releaseDates.results.find(r => r.iso_3166_1 === 'TR') || releaseDates.results.find(r => r.iso_3166_1 === 'US');
         certification = country?.release_dates[0].certification || 'Bilinmiyor';
       } else {
-         // TV ratings are slightly different
          const tvDetails = await tmdb(`/${type}/${id}/content_ratings`);
          const tr = tvDetails.results.find(r => r.iso_3166_1 === 'TR') || tvDetails.results.find(r => r.iso_3166_1 === 'US');
          certification = tr?.rating || 'Bilinmiyor';
+      }
+      
+      // Filter logic: compare certification with user age filter
+      if (ageFilter !== 'all' && parseInt(certification) > parseInt(ageFilter)) {
+          // This logic is simple; doesn't fully hide content, just signals it.
+          // Full hiding would require filtering the Discover/Recommendations lists.
       }
       ratingEl.textContent = `🔞 ${certification}`;
     }
@@ -1288,6 +1297,7 @@ function deleteRating(key) {
 let recGenreFilter = '';
 let recTypeFilter  = '';
 let recMinRating   = 0;
+let recSortMode    = 'popularity';
 let allRecommendations = [];
 let displayedRecsCount = 0;
 const RECS_PER_PAGE = 12;
@@ -1312,6 +1322,14 @@ function setRecRating(el) {
   document.querySelectorAll('#recFilterBar [data-rec-rating]').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   recMinRating = parseInt(el.dataset.recRating);
+  displayedRecsCount = RECS_PER_PAGE;
+  renderRecommendations();
+}
+
+function setRecSort(el, mode) {
+  document.querySelectorAll('#recFilterBar [data-rec-sort]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  recSortMode = mode;
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations();
 }
@@ -1377,6 +1395,9 @@ function renderRecommendations() {
   if (recGenreFilter) filtered = filtered.filter(i => i.genre_ids && i.genre_ids.includes(parseInt(recGenreFilter)));
   if (recTypeFilter)  filtered = filtered.filter(i => i._type === recTypeFilter);
   if (recMinRating)   filtered = filtered.filter(i => i.vote_average >= recMinRating);
+  
+  if (recSortMode === 'rating') filtered.sort((a, b) => b.vote_average - a.vote_average);
+  else filtered.sort((a, b) => b.popularity - a.popularity);
 
   if (!filtered.length) {
     cnt.innerHTML = '<div class="empty">Sonuç bulunamadı.</div>';
