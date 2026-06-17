@@ -40,6 +40,7 @@ nav.topnav{position:sticky;top:0;z-index:200;background:rgba(9,9,16,.92);backdro
 
 /* MAIN */
 main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-index:1}
+#recContent{transition:opacity .2s}
 
 /* PAGES */
 .page{display:none}
@@ -257,7 +258,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   <div class="nav-tabs">
     <button class="nav-tab active" data-page="discover">🔍 Keşfet</button>
     <button class="nav-tab" data-page="recommendations">✨ Öneriler</button>
-    <button class="nav-tab" data-page="watchlist">🕐 İzle Listesi</button>
+    <button class="nav-tab" data-page="watchlist">🕐 İzleme Listesi</button>
     <button class="nav-tab" data-page="rated">⭐ Puanladıklarım</button>
   </div>
   <div class="nav-spacer"></div>
@@ -287,7 +288,14 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         <button class="search-btn" onclick="doSearch()">Ara</button>
       </div>
     </div>
-    <div class="chip-row" id="chipRow"></div>
+    <div class="filter-sort-bar">
+      <span class="bar-label">Türler (Çoklu):</span>
+      <div id="filterGenres" class="bar-chips"></div>
+      <div class="bar-divider"></div>
+      <span class="bar-label">Min Puan:</span>
+      <input type="number" id="filterMinRating" value="0" min="0" max="10" step="0.5" style="width:50px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 5px">
+      <button class="btn btn-purple" onclick="applyAdvancedFilters()" style="padding:4px 10px;font-size:11px">Uygula</button>
+    </div>
     <div class="section-title" id="discoverTitle">Popüler Filmler <small></small></div>
     <div id="discoverGrid" class="card-grid">
       <div class="loading"><div class="spinner"></div>Yükleniyor...</div>
@@ -305,6 +313,13 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Tür:</span>
       <div class="bar-chips" id="recGenreChips"></div>
       <div class="bar-divider"></div>
+      <span class="bar-label">Türü:</span>
+      <div class="bar-chips">
+        <span class="bar-chip active" data-rec-type="" onclick="setRecType(this, '')">Tümü</span>
+        <span class="bar-chip" data-rec-type="movie" onclick="setRecType(this, 'movie')">🎬 Film</span>
+        <span class="bar-chip" data-rec-type="tv" onclick="setRecType(this, 'tv')">📺 Dizi</span>
+      </div>
+      <div class="bar-divider"></div>
       <span class="bar-label">Min. Puan:</span>
       <div class="bar-chips">
         <span class="bar-chip active" data-rec-rating="0" onclick="setRecRating(this)">Hepsi</span>
@@ -314,11 +329,12 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
     </div>
     
     <div id="recContent"></div>
+    <div id="recScrollTrigger" style="height: 20px;"></div>
   </div>
 
   <!-- İZLE LİSTESİ -->
   <div id="page-watchlist" class="page">
-    <div class="section-title" style="margin-bottom:22px">İzle Listesi <small id="watchCount"></small></div>
+    <div class="section-title" style="margin-bottom:22px">İzleme Listesi <small id="watchCount"></small></div>
     <div id="watchGrid" class="card-grid"></div>
   </div>
 
@@ -383,6 +399,23 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <p></p>
     </div>
     <div class="modal-body">
+      <div class="settings-section">
+        <div class="settings-label">İçerik Filtreleri</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="nsfwFilter"> NSFW (Yetişkin) İçerikleri Gizle
+          </label>
+          <label style="font-size:13px;gap:8px">
+            Yaş Filtresi: 
+            <select id="ageFilter" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 5px">
+              <option value="all">Filtre Yok</option>
+              <option value="13">13+ Altı</option>
+              <option value="18">18+ Altı</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn btn-purple" onclick="saveFilters()" style="width:100%;margin-top:12px">Kaydet</button>
+      </div>
       <div class="settings-section">
         <div class="settings-label">TMDB API Anahtarı</div>
         <input class="apikey-input" id="settingsKeyInput" placeholder="Yeni anahtar...">
@@ -467,6 +500,36 @@ function acceptCookies() {
 }
 if (!ls('cookies_accepted')) {
   document.getElementById('cookieBanner').style.display = 'block';
+}
+
+// ══ INFINITE SCROLL ══
+const observer = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting) {
+    if (activePage === 'discover') {
+      if (document.getElementById('loadMoreBtn')?.classList.contains('visible')) {
+        loadMore();
+      }
+    } else if (activePage === 'recommendations') {
+      loadMoreRecommendations();
+    }
+  }
+}, { threshold: 0.1 });
+
+setTimeout(() => {
+  observer.observe(document.getElementById('scrollTrigger'));
+  observer.observe(document.getElementById('recScrollTrigger'));
+}, 1000);
+
+// ══ CACHE ══
+async function getGenres() {
+  const cached = lsJSON('fo_genres', null);
+  if (cached) return cached;
+  const [movieGenres, tvGenres] = await Promise.all([tmdb('/genre/movie/list'), tmdb('/genre/tv/list')]);
+  const genreMap = new Map();
+  [...movieGenres.genres, ...tvGenres.genres].forEach(g => genreMap.set(String(g.id), g.name));
+  const obj = Object.fromEntries(genreMap);
+  lsSet('fo_genres', JSON.stringify(obj));
+  return obj;
 }
 
 // ══ CONFIG ══
@@ -568,6 +631,8 @@ async function saveApiKey() {
 function openSettings() {
   document.getElementById('settingsKeyInput').value = TMDB_KEY;
   document.getElementById('omdbKeyInput').value     = OMDB_KEY;
+  document.getElementById('nsfwFilter').checked     = nsfwFilter;
+  document.getElementById('ageFilter').value        = ageFilter;
   openModal('settingsModal');
 }
 
@@ -590,6 +655,18 @@ function updateOmdbKey() {
   lsSet('fo_omdb', key);
   closeModal('settingsModal');
   toast(key ? '✓ OMDb anahtarı kaydedildi — IMDb puanları aktif' : 'OMDb anahtarı temizlendi');
+}
+
+function saveFilters() {
+  nsfwFilter = document.getElementById('nsfwFilter').checked;
+  ageFilter  = document.getElementById('ageFilter').value;
+  lsSet('fo_nsfw', nsfwFilter);
+  lsSet('fo_age',  ageFilter);
+  closeModal('settingsModal');
+  toast('✓ Filtreler kaydedildi');
+  seenIds.clear();
+  currentPage = 1;
+  loadDiscover();
 }
 
 function clearAll() {
@@ -625,32 +702,29 @@ function initNav() {
 
 // ══ GENRES ══
 const MOVIE_GENRES = [
-  {id:'',label:'Tümü'},{id:'28',label:'Aksiyon'},{id:'35',label:'Komedi'},
+  {id:'28',label:'Aksiyon'},{id:'35',label:'Komedi'},
   {id:'18',label:'Drama'},{id:'27',label:'Korku'},{id:'878',label:'Bilim Kurgu'},
   {id:'10749',label:'Romantik'},{id:'16',label:'Animasyon'},{id:'53',label:'Gerilim'},
   {id:'80',label:'Suç'},{id:'10752',label:'Savaş'},
 ];
 const TV_GENRES = [
-  {id:'',label:'Tümü'},{id:'10759',label:'Aksiyon'},{id:'35',label:'Komedi'},
+  {id:'10759',label:'Aksiyon'},{id:'35',label:'Komedi'},
   {id:'18',label:'Drama'},{id:'10765',label:'Bilim Kurgu'},{id:'9648',label:'Gizem'},
   {id:'10768',label:'Belgesel'},{id:'10762',label:'Çocuk'},
 ];
 
-function buildChips() {
+function buildFilterGenres() {
   const genres = currentType === 'movie' ? MOVIE_GENRES : TV_GENRES;
-  const row    = document.getElementById('chipRow');
+  const row    = document.getElementById('filterGenres');
   row.innerHTML = '';
   genres.forEach(g => {
-    const c      = document.createElement('div');
-    c.className  = 'chip' + (g.id === currentGenre ? ' active' : '');
+    const c      = document.createElement('span');
+    c.className  = 'bar-chip';
     c.textContent = g.label;
+    c.dataset.id  = g.id;
     c.onclick = () => {
-      currentGenre = g.id; currentSearch = ''; currentPage = 1;
-      document.getElementById('searchInput').value = '';
-      document.getElementById('searchClear').classList.remove('visible');
-      row.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
-      c.classList.add('active');
-      loadDiscover();
+      c.classList.toggle('active');
+      selectedGenres = [...row.querySelectorAll('.bar-chip.active')].map(el => el.dataset.id);
     };
     row.appendChild(c);
   });
@@ -658,11 +732,12 @@ function buildChips() {
 
 function setType(type, btn) {
   currentType = type; currentGenre = ''; currentSearch = ''; currentPage = 1;
+  selectedGenres = [];
   document.getElementById('searchInput').value = '';
   document.getElementById('searchClear').classList.remove('visible');
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  buildChips();
+  buildFilterGenres();
   loadDiscover();
 }
 
@@ -684,22 +759,21 @@ function doSearch() {
   loadDiscover();
 }
 
-// ══ INFINITE SCROLL ══
-const observer = new IntersectionObserver((entries) => {
-  if (entries[0].isIntersecting && document.getElementById('loadMoreBtn')?.classList.contains('visible')) {
-    loadMore();
-  }
-}, { threshold: 0.1 });
-
-// Initialize observer
-setTimeout(() => observer.observe(document.getElementById('scrollTrigger')), 1000);
-
 // ══ DISCOVER ══
+let seenIds = new Set();
+let selectedGenres = [];
+let minRating = 0;
+
+function applyAdvancedFilters() {
+  minRating = parseFloat(document.getElementById('filterMinRating').value) || 0;
+  currentPage = 1;
+  loadDiscover();
+}
+
 async function loadDiscover(append = false) {
   const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
   
-  // Use a hidden button to maintain existing logic for checking if more pages exist
   if (!document.getElementById('loadMoreBtn')) {
       const btn = document.createElement('button');
       btn.id = 'loadMoreBtn';
@@ -711,6 +785,7 @@ async function loadDiscover(append = false) {
   const moreBtn = document.getElementById('loadMoreBtn');
 
   if (!append) {
+    seenIds.clear();
     grid.innerHTML = '<div class="loading"><div class="spinner"></div>Yükleniyor...</div>';
     moreBtn.classList.remove('visible');
   } else {
@@ -725,19 +800,25 @@ async function loadDiscover(append = false) {
 
   try {
     let data;
+    const params = { page: currentPage, include_adult: !nsfwFilter, 'vote_average.gte': minRating };
+    if (selectedGenres.length) params.with_genres = selectedGenres.join(',');
+    
     if (currentSearch) {
-      data = await tmdb(`/search/${currentType}`, { query: currentSearch, include_adult: false, page: currentPage });
+      params.query = currentSearch;
+      data = await tmdb(`/search/${currentType}`, params);
       titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
-    } else if (currentGenre) {
-      data = await tmdb(`/discover/${currentType}`, { with_genres: currentGenre, sort_by: 'popularity.desc', page: currentPage });
-      titleEl.innerHTML = `${currentType === 'movie' ? 'Filmler' : 'Diziler'} <small></small>`;
     } else {
-      data = await tmdb(`/${currentType}/popular`, { page: currentPage });
+      data = await tmdb(currentGenre ? `/discover/${currentType}` : `/${currentType}/popular`, params);
       titleEl.innerHTML = `${currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler'} <small></small>`;
     }
 
     totalPages = data.total_pages || 1;
-    const items = (data.results || []).slice(0, 20);
+    const items = (data.results || []).filter(item => {
+      const id = `${currentType}_${item.id}`;
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
 
     if (append) {
       document.getElementById('appendSpinner')?.remove();
@@ -850,7 +931,7 @@ function hidePreview() {
 }
 
 // ══ DETAIL MODAL ══
-function openDetail(item, type) {
+function openDetail(item, type, reason = null) {
   currentItem   = { item, type };
   pendingRating = ratings[`${type}_${item.id}`] || 0;
 
@@ -876,6 +957,7 @@ function openDetail(item, type) {
     ${backdropHtml}
     <div class="detail-bd">
       <div class="detail-title">${title}</div>
+      ${reason ? `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">★ ${reason}</div>` : ''}
       <div class="detail-scores" id="detailScores">
         ${item.vote_average > 0
           ? `<div class="score-pill score-tmdb">
@@ -885,6 +967,7 @@ function openDetail(item, type) {
         <div id="imdbScorePill"></div>
       </div>
       <div class="detail-meta" id="detailMeta">
+        <span id="detailMaturity">🔞 ...</span>
         <span>📅 ${year || '?'}</span>
         <span>${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
         ${item.original_language ? `<span>🌐 ${item.original_language.toUpperCase()}</span>` : ''}
@@ -898,7 +981,7 @@ function openDetail(item, type) {
       <div class="detail-actions">
         <button class="btn btn-purple" onclick="saveRating()">Kaydet</button>
         <button class="btn btn-gold" id="watchBtn" onclick="toggleWatch()">
-          ${inW ? '🕐 Listeden Çıkar' : '+ İzle Listesine Ekle'}
+          ${inW ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle'}
         </button>
         <a id="imdbLink" class="btn btn-imdb" href="#" target="_blank" style="display:none">
           <span style="font-weight:800;font-size:11px">IMDb</span>'de Gör ↗
@@ -913,10 +996,27 @@ function openDetail(item, type) {
 
 async function fetchDetailExtras(id, type) {
   try {
-    const [details, credits] = await Promise.all([
+    const [details, credits, releaseDates] = await Promise.all([
       tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' }),
       tmdb(`/${type}/${id}/credits`).catch(() => ({ cast: [] })),
+      tmdb(`/${type}/${id}/release_dates`).catch(() => ({ results: [] })),
     ]);
+
+    // Age Rating
+    const ratingEl = document.getElementById('detailMaturity');
+    if (ratingEl) {
+      let certification = 'Bilinmiyor';
+      if (type === 'movie') {
+        const country = releaseDates.results.find(r => r.iso_3166_1 === 'TR') || releaseDates.results.find(r => r.iso_3166_1 === 'US');
+        certification = country?.release_dates[0].certification || 'Bilinmiyor';
+      } else {
+         // TV ratings are slightly different
+         const tvDetails = await tmdb(`/${type}/${id}/content_ratings`);
+         const tr = tvDetails.results.find(r => r.iso_3166_1 === 'TR') || tvDetails.results.find(r => r.iso_3166_1 === 'US');
+         certification = tr?.rating || 'Bilinmiyor';
+      }
+      ratingEl.textContent = `🔞 ${certification}`;
+    }
 
     const runtimeEl = document.getElementById('detailRuntime');
     if (runtimeEl) {
@@ -1012,8 +1112,8 @@ function toggleWatch() {
   const btn = document.getElementById('watchBtn');
   if (watchlist[key]) {
     delete watchlist[key];
-    btn.textContent = '+ İzle Listesine Ekle';
-    toast('İzle listesinden çıkarıldı');
+    btn.textContent = '+ İzleme Listesine Ekle';
+    toast('İzleme listesinden çıkarıldı');
   } else {
     watchlist[key] = {
       id: item.id, type,
@@ -1023,7 +1123,7 @@ function toggleWatch() {
       score:  item.vote_average || 0,
     };
     btn.textContent = '🕐 Listeden Çıkar';
-    toast('✓ İzle listesine eklendi');
+    toast('✓ İzleme listesine eklendi');
   }
   saveAll();
 }
@@ -1035,7 +1135,7 @@ function renderWatchlist() {
   count.textContent = items.length ? `${items.length} içerik` : '';
 
   if (!items.length) {
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🕐</div><h3>İzle listesi boş</h3><p>Bir filmin detayını açıp "İzle Listesine Ekle" butonuna bas.</p></div>';
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🕐</div><h3>İzleme listesi boş</h3><p>Bir filmin detayını açıp "İzleme Listesine Ekle" butonuna bas.</p></div>';
     return;
   }
   grid.innerHTML = '';
@@ -1053,7 +1153,7 @@ function renderWatchlist() {
     rm.onclick = e => {
       e.stopPropagation();
       delete watchlist[key]; saveAll(); renderWatchlist();
-      toast('İzle listesinden çıkarıldı');
+      toast('İzleme listesinden çıkarıldı');
     };
     card.appendChild(rm);
     grid.appendChild(card);
@@ -1141,7 +1241,7 @@ function renderRated() {
         <div class="rated-name" title="${meta.title || key}">${meta.title || key}</div>
         <div class="rated-sub">
           <span class="rated-type-pill">${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
-          ${meta.year ? `<span>${meta.year}</span>` : ''}
+          ${meta.year ? `<span>${meta.year}</span>' : ''}
           ${scoreBit}
         </div>
         <div class="star-row">${stars}</div>
@@ -1178,13 +1278,25 @@ function deleteRating(key) {
 
 // ══ RECOMMENDATIONS ══
 let recGenreFilter = '';
+let recTypeFilter  = '';
 let recMinRating   = 0;
 let allRecommendations = [];
+let displayedRecsCount = 0;
+const RECS_PER_PAGE = 12;
 
 function setRecGenre(el, genreId) {
   document.querySelectorAll('#recGenreChips .bar-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   recGenreFilter = genreId;
+  displayedRecsCount = RECS_PER_PAGE;
+  renderRecommendations();
+}
+
+function setRecType(el, type) {
+  document.querySelectorAll('#recFilterBar [data-rec-type]').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  recTypeFilter = type;
+  displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations();
 }
 
@@ -1192,6 +1304,7 @@ function setRecRating(el) {
   document.querySelectorAll('#recFilterBar [data-rec-rating]').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   recMinRating = parseInt(el.dataset.recRating);
+  displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations();
 }
 
@@ -1205,6 +1318,7 @@ async function loadRecommendations() {
   }
 
   cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
+  displayedRecsCount = RECS_PER_PAGE;
   
   const ratedIds = new Set(keys.map(k => k.split('_').slice(1).join('')));
   const topRated = [...keys]
@@ -1212,62 +1326,67 @@ async function loadRecommendations() {
     .sort((a, b) => ratings[b] - ratings[a]);
 
   let fetchedItems = [];
-  const uniqueGenres = new Map();
-  uniqueGenres.set('', 'Tümü');
+  const genreMap = new Map(Object.entries(await getGenres()));
 
-  // Fetch a mix of recommendations
-  for (const key of topRated.slice(0, 4)) {
+  for (const key of topRated.slice(0, 3)) {
     const parts = key.split('_');
     const type  = parts[0];
     const id    = parts.slice(1).join('_');
+    const title = metaCache[key]?.title || 'sevdiğin bir içerik';
     try {
       const recData = await tmdb(`/${type}/${id}/recommendations`);
-      const items = (recData.results || []).filter(r => !ratedIds.has(String(r.id)));
-      
-      for(const item of items) {
-        fetchedItems.push({ ...item, _type: type });
-        // Collect genres
-        (item.genre_ids || []).forEach(gid => {
-            if (!uniqueGenres.has(String(gid))) {
-                // Fetch genre name or use ID as label if not cached (lazy)
-                uniqueGenres.set(String(gid), 'Tür ' + gid); 
-            }
-        });
-      }
+      (recData.results || []).filter(r => !ratedIds.has(String(r.id))).forEach(item => {
+        fetchedItems.push({ ...item, _type: type, _reason: `"${title}" benzeri` });
+      });
     } catch {}
   }
   
   allRecommendations = [...new Map(fetchedItems.map(item => [item.id, item])).values()];
   
-  // Update Genre Chips
   const chipRow = document.getElementById('recGenreChips');
+  const uniqueIds = new Set(allRecommendations.flatMap(i => i.genre_ids || []));
   chipRow.innerHTML = `<span class="bar-chip ${!recGenreFilter ? 'active' : ''}" onclick="setRecGenre(this, '')">Tümü</span>`;
-  uniqueGenres.forEach((label, id) => {
-    if(!id) return;
-    chipRow.innerHTML += `<span class="bar-chip ${recGenreFilter === id ? 'active' : ''}" onclick="setRecGenre(this, '${id}')">${label}</span>`;
+  uniqueIds.forEach(gid => {
+    const name = genreMap.get(String(gid)) || 'Tür ' + gid;
+    chipRow.innerHTML += `<span class="bar-chip ${recGenreFilter === String(gid) ? 'active' : ''}" onclick="setRecGenre(this, '${gid}')">${name}</span>`;
   });
 
   renderRecommendations();
 }
 
+function loadMoreRecommendations() {
+  if (displayedRecsCount < allRecommendations.length) {
+    displayedRecsCount += RECS_PER_PAGE;
+    renderRecommendations();
+  }
+}
+
 function renderRecommendations() {
   const cnt = document.getElementById('recContent');
-  let filtered = allRecommendations;
+  cnt.style.opacity = '0';
   
+  let filtered = allRecommendations;
   if (recGenreFilter) filtered = filtered.filter(i => i.genre_ids && i.genre_ids.includes(parseInt(recGenreFilter)));
+  if (recTypeFilter)  filtered = filtered.filter(i => i._type === recTypeFilter);
   if (recMinRating)   filtered = filtered.filter(i => i.vote_average >= recMinRating);
 
   if (!filtered.length) {
     cnt.innerHTML = '<div class="empty">Sonuç bulunamadı.</div>';
+    cnt.style.opacity = '1';
     return;
   }
 
   const grid = document.createElement('div');
   grid.className = 'card-grid';
-  filtered.forEach(item => grid.appendChild(makeCard(item, item._type)));
+  filtered.slice(0, displayedRecsCount).forEach(item => {
+    const card = makeCard(item, item._type);
+    card.onclick = () => openDetail(item, item._type, item._reason);
+    grid.appendChild(card);
+  });
   
   cnt.innerHTML = '';
   cnt.appendChild(grid);
+  setTimeout(() => cnt.style.opacity = '1', 50);
 }
 
 // ══ IMPORT ══
@@ -1380,7 +1499,7 @@ function showImportAlert(type, msg) {
 
 // ══ INIT ══
 initNav();
-buildChips();
+buildFilterGenres();
 if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
 </script>
 </body>
