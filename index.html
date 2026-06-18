@@ -501,6 +501,18 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         <button class="btn btn-gold" onclick="updateOmdbKey()" style="width:100%">Kaydet</button>
       </div>
 
+      <div class="settings-section">
+        <div class="settings-label" style="display:flex;align-items:center;gap:6px">
+          Yedekleme & Geri Yükleme
+        </div>
+        <div class="apikey-hint">
+          Tüm puanlarını, izleme listeni ve ayarlarını yedekle veya geri yükle.
+        </div>
+        <button class="btn btn-purple" onclick="exportData()" style="width:100%;margin-bottom:8px">💾 Verileri Dışa Aktar</button>
+        <button class="btn btn-gold" onclick="document.getElementById('importBackupFile').click()" style="width:100%">⬆️ Verileri İçe Aktar</button>
+        <input type="file" id="importBackupFile" accept=".json" style="display:none" onchange="importData(this.files[0])">
+      </div>
+
       <div class="settings-section" style="border-top:1px solid var(--border);padding-top:16px">
         <div class="settings-label" style="color:var(--danger)">Tehlikeli Bölge</div>
         <button class="btn btn-ghost" onclick="clearAll()"
@@ -1890,6 +1902,70 @@ function showImportAlert(type, msg) {
   el.className= `alert${type==='ok'?' alert-ok':type==='err'?' alert-err':''}`;
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
+}
+
+// ══ BACKUP / RESTORE ══
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type: type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportData() {
+  const data = {
+    TMDB_KEY,
+    OMDB_KEY,
+    ratings,
+    watchlist,
+    metaCache,
+    nsfwFilter,
+    ageFilter,
+    cookies_accepted: ls('cookies_accepted')
+  };
+  const filename = `sinematik_yedek_${new Date().toISOString().slice(0,10)}.json`;
+  downloadFile(filename, JSON.stringify(data, null, 2), 'application/json');
+  toast('Yedekleme dosyası indirildi!');
+}
+
+function importData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      
+      if (!confirm('Mevcut tüm verileriniz silinip yedekleme dosyası yüklenecek. Emin misiniz?')) return;
+
+      TMDB_KEY  = data.TMDB_KEY  || TMDB_KEY;
+      OMDB_KEY  = data.OMDB_KEY  || '';
+      ratings   = data.ratings   || {};
+      watchlist = data.watchlist || {};
+      metaCache = data.metaCache || {};
+      nsfwFilter = data.nsfwFilter ?? nsfwFilter;
+      ageFilter = data.ageFilter ?? ageFilter;
+      if (data.cookies_accepted) lsSet('cookies_accepted', data.cookies_accepted);
+
+      saveAll();
+      closeModal('settingsModal');
+      toast('Yedekleme dosyası başarıyla yüklendi!');
+      
+      // Force reload UI
+      loadDiscover();
+      renderRated();
+      renderWatchlist();
+      buildFilterGenres();
+      openSettings(); // update settings modal inputs
+    } catch (error) {
+      toast('❌ Yedekleme dosyası okunamadı veya bozuk: ' + error.message);
+    }
+  };
+  reader.readAsText(file);
 }
 </script>
 </body>
