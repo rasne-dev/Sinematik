@@ -1,62 +1,64 @@
 # 🎬 Sinematik
 
-Kişisel film ve dizi takip & öneri sitesi. Tek HTML dosyası, sıfır backend, tamamen ücretsiz.
+Sinematik, modern bir arayüze sahip, tamamen tarayıcı üzerinde çalışan (serverless) kişisel bir film ve dizi takip platformudur. Kayıt gerektirmez, verilerinizi yerel olarak saklar ve size özel bir sinema kütüphanesi sunar.
 
-**[→ sinematik.live](https://rasne-dev.github.io/sinematik)**
-
----
-
-## Özellikler
-
-- 🔍 **Keşfet** — TMDB üzerinden popüler film & dizi, **çoklu tür seçimi ve puan aralığı filtreleri**, arama, sonsuz kaydırma (infinite scroll).
-- ✨ **Öneriler** — Puanlarına göre kişisel öneri motoru (tür ağırlığı + TMDB benzer içerik), **tür ve puan filtreleri**, sonsuz kaydırma.
-- 🕐 **İzleme Listesi** — Sonra izlemek istediğin içerikleri kaydet.
-- ⭐ **Puanladıklarım** — Tüm puanlarını listele, güncelle, IMDb puanına göre sırala, istatistiklerini gör.
-- 📥 **IMDb İçe Aktarma** — IMDb `ratings.csv` dosyasını yükle, tüm puanlar otomatik eşleştirilir.
-- 🔞 **İçerik Filtreleme** — Ayarlar kısmından NSFW (yetişkin) içerikleri gizleme ve yaş sınırı ayarı.
-- ℹ️ **Akıllı İpucu** — Önerilen içeriklerin neden önerildiğini detay modalında gör.
-- 🌙 Dark theme, mobil uyumlu.
-- 💾 Tüm veriler tarayıcıda saklanır (localStorage) — kayıt gerekmez.
+### 🔗 [Uygulamayı Aç](https://rasne-dev.github.io/Sinematik/)
 
 ---
 
-## Kullanım
+## 🚀 Öne Çıkan Özellikler
 
-Doğrudan aç, kurulum gerekmez:
+### 🔍 Akıllı Keşfet & Filtreleme
+- **Dinamik Kategoriler:** Sayfayı her açtığınızda *Popüler, En Yüksek Puanlı, Yeni Vizyona Girenler* gibi farklı kategorilerle karşılaşırsınız.
+- **Gelişmiş Filtreleme:** Hem Keşfet hem de Öneriler kısmında **çoklu tür seçimi** (Aksiyon + Komedi) ve minimum puan filtresi.
+- **Anlık Arama:** `AbortController` desteğiyle yarış durumlarını önleyen hızlı arama motoru.
 
-```
-index.html → tarayıcıda aç
-```
+### ✨ Kişisel Öneri Motoru
+- **Rastgele Bazlı Çeşitlilik:** Puanladığınız içerikler arasından her seferinde farklı kaynaklar seçilerek sunulan taze öneriler.
+- **İlişkisel Analiz:** Sevdiğiniz bir filmin "Neden Önerildiğini" anında görün.
 
-Veya GitHub Pages üzerinden: `rasne-dev.github.io/sinematik`
+### ⭐ Modern Puanlama ve Takip
+- **Otomatik Kayıt:** Yıldızlara tıkladığınız an puanınız kaydedilir, "Kaydet" butonuyla uğraşmanıza gerek kalmaz.
+- **Yıldız Sayacı:** Puan verirken kaçıncı yıldızda olduğunuzu gösteren (8/10) dinamik gösterge.
+- **Toggle-Off:** Yanlışlıkla verdiğiniz puanı aynı yıldıza tekrar tıklayarak silebilirsiniz.
+- **Hızlı İzleme Listesi:** Film kartlarının üzerine gelerek (hover) detaya girmeden tek tıkla listeye ekleme/çıkarma.
+
+### 🍿 IMDb & OMDb Entegrasyonu
+- **Kartlarda IMDb Puanı:** OMDb API desteğiyle film kartlarının üzerinde gerçek IMDb puanlarını görün.
+- **YouTube Fragmanları:** Detay panelinde tek tıkla resmi fragmanlara erişim.
+- **Gelişmiş İçe Aktarma:** IMDb `ratings.csv` dosyasını sürükle-bırak yöntemiyle saniyeler içinde kütüphanenize dahil edin.
+
+### 🎭 UX/UI İyileştirmeleri
+- **Etkileşimli Oyuncular:** Oyuncu profillerine tıklayarak o oyuncunun tüm filmografisini anında aratın.
+- **Gelişmiş Görsel Hiyerarşi:** Aksiyon, Dram, Korku gibi türler için özel renkli etiketler.
+- **Akıllı Navigasyon:** Sayfa aşağı kaydırıldığında çıkan "Başa Dön" butonu ve genişletilmiş (200px) film özetleri.
 
 ---
 
-## IMDb Puanlarını İçe Aktarma
+## 🛠️ Teknik Detaylar
 
-1. [imdb.com](https://imdb.com) → Profilim → **Your Ratings** → sağ üst `⋮` → **Export**
-2. İndirilen `ratings.csv` dosyasını siteye yükle
-3. Tüm puanlar TMDB ile eşleştirilip otomatik içe aktarılır
-
----
-
-## Teknik
-
-| | |
+| Bileşen | Teknoloji |
 |---|---|
-| Veri kaynağı | [TMDB API](https://www.themoviedb.org/) (ücretsiz) |
-| Depolama | `localStorage` (tarayıcı) |
-| Bağımlılık | Sıfır — vanilla JS, tek dosya |
-| Host | GitHub Pages (ücretsiz) |
+| **Frontend** | Vanilla JS (ES6+), CSS3 (Custom Variables), HTML5 |
+| **Veri Kaynağı** | [TMDB API](https://www.themoviedb.org/) & [OMDb API](https://www.omdbapi.com/) |
+| **Depolama** | `localStorage` (Kayıt gerektirmez, %100 gizlilik) |
+| **Performans** | Tek dosya, sıfır bağımlılık, anlık yükleme |
 
 ---
 
-## Geliştirme Notları
+## 📖 Kullanım Kılavuzu
 
-API anahtarı `index.html` içine gömülüdür. TMDB key'leri client-side kullanım için tasarlanmıştır, kısıtlama yaşanırsa [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api) adresinden ücretsiz yeni key alınabilir.
+### API Anahtarları Hakkında
+Uygulama varsayılan bir TMDB anahtarıyla gelir. Ancak gerçek IMDb puanlarını görmek için:
+1. [omdbapi.com](https://www.omdbapi.com/apikey.aspx) adresinden ücretsiz bir anahtar alın.
+2. Sinematik içinde **Ayarlar (⚙️)** menüsüne girip anahtarı kaydedin.
+
+### IMDb Puanlarını Aktarma
+1. [imdb.com](https://imdb.com) → Profilim → **Your Ratings** → sağ üst `⋮` → **Export** yolunu izleyin.
+2. İndirilen `ratings.csv` dosyasını uygulamadaki **"IMDb İçe Aktar"** butonuna tıklayarak yükleyin.
+3. Uygulama, IMDb ID'lerini kullanarak tüm içerikleri otomatik olarak TMDB verileriyle eşleştirir.
 
 ---
 
-## Lisans
-
+## 📜 Lisans
 MIT © [rasne-dev](https://github.com/rasne-dev)

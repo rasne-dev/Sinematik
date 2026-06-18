@@ -91,6 +91,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .badge{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:3px}
 .badge-tmdb{font-size:8px;opacity:.6;font-weight:400}
 .badge-u{position:absolute;top:7px;left:7px;background:var(--accent2);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#fff}
+.badge-imdb-card{position:absolute;top:30px;right:7px;background:rgba(245,197,24,0.9);color:#000;border-radius:5px;padding:2px 5px;font-size:10px;font-weight:800;display:none;align-items:center;gap:3px;box-shadow:0 2px 6px rgba(0,0,0,0.4)}
+.badge-imdb-card.show{display:flex}
 .badge-w{position:absolute;bottom:52px;right:7px;background:rgba(232,184,109,.12);border:1px solid rgba(232,184,109,.3);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--accent)}
 .badge-tv{position:absolute;bottom:52px;left:7px;background:rgba(124,106,240,0.15);border:1px solid rgba(124,106,240,0.3);border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;color:var(--accent2);backdrop-filter:blur(4px)}
 .badge-movie{position:absolute;bottom:52px;left:7px;background:rgba(232,184,109,0.15);border:1px solid rgba(232,184,109,0.3);border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;color:var(--accent);backdrop-filter:blur(4px)}
@@ -337,7 +339,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <p>Film ve dizi puanla, sana özel öneriler al.</p>
       <div class="search-wrap">
         <div class="type-toggle">
-          <button class="type-btn active" onclick="setType('movie',this)">🎬 Film</button>
+          <button class="type-btn active" onclick="setType('all',this)">🌍 Tümü</button>
+          <button class="type-btn" onclick="setType('movie',this)">🎬 Film</button>
           <button class="type-btn" onclick="setType('tv',this)">📺 Dizi</button>
         </div>
         <div class="search-field">
@@ -635,7 +638,7 @@ let ratings   = lsJSON('fo_ratings', {});
 let watchlist = lsJSON('fo_watch',   {});
 let metaCache = lsJSON('fo_meta',    {});
 
-let currentType   = 'movie';
+let currentType   = 'all';
 let currentGenre  = '';
 let currentSearch = '';
 let currentPage   = 1;
@@ -797,8 +800,15 @@ const TV_GENRES = [
 ];
 
 function buildFilterGenres() {
-  const genres = currentType === 'movie' ? MOVIE_GENRES : TV_GENRES;
   const row    = document.getElementById('filterGenres');
+  const bar    = row.closest('.filter-sort-bar');
+  
+  if (currentType === 'all') {
+    bar.style.display = 'none'; // Mixed discovery doesn't support these filters via API easily
+    return;
+  }
+  bar.style.display = 'flex';
+  const genres = currentType === 'movie' ? MOVIE_GENRES : TV_GENRES;
   row.innerHTML = '';
   genres.forEach(g => {
     const c      = document.createElement('span');
@@ -890,7 +900,23 @@ async function loadDiscover(append = false, _retries = 0) {
 
   try {
     let data;
-    const params = { page: currentPage, include_adult: !nsfwFilter, 'vote_average.gte': minRating };
+    const today = new Date();
+    const oneYearLater = new Date();
+    oneYearLater.setFullYear(today.getFullYear() + 1);
+    const dateLimit = oneYearLater.toISOString().split('T')[0];
+
+    const params = { 
+      page: currentPage, 
+      include_adult: !nsfwFilter, 
+      'vote_average.gte': minRating,
+      'vote_count.gte': currentSearch ? 0 : 5 // Arama yapmıyorsa en az 5 oy (kalite filtresi)
+    };
+
+    if (!currentSearch) {
+      if (currentType === 'movie') params['primary_release_date.lte'] = dateLimit;
+      else params['first_air_date.lte'] = dateLimit;
+    }
+
     if (selectedGenres.length) params.with_genres = selectedGenres.join(',');
     
     if (ageFilter !== 'all') {
@@ -900,40 +926,46 @@ async function loadDiscover(append = false, _retries = 0) {
 
     if (currentSearch) {
       params.query = currentSearch;
-      data = await tmdb(`/search/${currentType}`, params, searchController.signal);
+      const path = currentType === 'all' ? '/search/multi' : `/search/${currentType}`;
+      data = await tmdb(path, params, searchController.signal);
       titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
     } else {
-      // Provide variety when no specific search is active
-      const sorts = [
-        'popularity.desc', 
-        'vote_average.desc', 
-        'primary_release_date.desc',
-        'revenue.desc',
-        'vote_count.desc'
-      ];
-      // Use a consistent sort for the same "session" or day, or just random
-      if (!append) {
-        window._currentSort = sorts[Math.floor(Math.random() * sorts.length)];
-      }
-      
-      params.sort_by = window._currentSort || 'popularity.desc';
-      
-      // Ensure we have some minimum votes for "top rated" style sorts
-      if (params.sort_by.includes('vote_average')) {
-        params['vote_count.gte'] = 200;
-      }
+      if (currentType === 'all') {
+        data = await tmdb('/trending/all/day', { page: currentPage }, searchController.signal);
+        titleEl.innerHTML = `Günün Trendleri <small>Film & Dizi Karışık</small>`;
+      } else {
+        // Provide variety when no specific search is active
+        const sorts = [
+          'popularity.desc', 
+          'vote_average.desc', 
+          'primary_release_date.desc',
+          'revenue.desc',
+          'vote_count.desc'
+        ];
+        // Use a consistent sort for the same "session" or day, or just random
+        if (!append) {
+          window._currentSort = sorts[Math.floor(Math.random() * sorts.length)];
+        }
+        
+        params.sort_by = window._currentSort || 'popularity.desc';
+        
+        // Ensure we have some minimum votes for "top rated" style sorts
+        if (params.sort_by.includes('vote_average')) {
+          params['vote_count.gte'] = 200;
+        }
 
-      data = await tmdb(`/discover/${currentType}`, params, searchController.signal);
-      
-      const sortLabels = {
-        'popularity.desc': 'Popüler',
-        'vote_average.desc': 'En Yüksek Puanlı',
-        'primary_release_date.desc': 'Yeni Vizyona Giren',
-        'revenue.desc': 'En Çok Hasılat Yapan',
-        'vote_count.desc': 'En Çok Oylanan'
-      };
-      const label = sortLabels[params.sort_by] || 'Önerilen';
-      titleEl.innerHTML = `${label} ${currentType === 'movie' ? 'Filmler' : 'Diziler'} <small></small>`;
+        data = await tmdb(`/discover/${currentType}`, params, searchController.signal);
+        
+        const sortLabels = {
+          'popularity.desc': 'Popüler',
+          'vote_average.desc': 'En Yüksek Puanlı',
+          'primary_release_date.desc': 'Yeni Vizyona Giren',
+          'revenue.desc': 'En Çok Hasılat Yapan',
+          'vote_count.desc': 'En Çok Oylanan'
+        };
+        const label = sortLabels[params.sort_by] || 'Önerilen';
+        titleEl.innerHTML = `${label} ${currentType === 'movie' ? 'Filmler' : 'Diziler'} <small></small>`;
+      }
     }
 
     totalPages = data.total_pages || 1;
@@ -952,7 +984,15 @@ async function loadDiscover(append = false, _retries = 0) {
     }
 
     const items = rawResults.filter(item => {
-      const id = `${currentType}_${item.id}`;
+      // Kişileri (person) multi-search sonuçlarından çıkar
+      if (item.media_type === 'person') return false;
+      
+      // Görseli olmayan veya oyu olmayan (arama dışı) içerikleri ele
+      if (!item.poster_path) return false;
+      if (!currentSearch && (item.vote_count || 0) < 5) return false;
+
+      const resType = item.media_type || (currentType === 'all' ? 'movie' : currentType);
+      const id = `${resType}_${item.id}`;
       if (seenIds.has(id)) return false;
       seenIds.add(id);
       return true;
@@ -980,7 +1020,8 @@ async function loadDiscover(append = false, _retries = 0) {
     }
 
     items.forEach((item, i) => {
-      const el = makeCard(item, currentType);
+      const resType = item.media_type || (currentType === 'all' ? 'movie' : currentType);
+      const el = makeCard(item, resType);
       el.style.animationDelay = `${i * 20}ms`;
       grid.appendChild(el);
     });
@@ -1032,6 +1073,7 @@ function makeCard(item, type) {
 
   const scoreBadge = item.vote_average > 0
     ? `<div class="badge"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
+  const imdbBadge = `<div class="badge-imdb-card" id="imdb-card-${key}"></div>`;
   const userBadge = myR ? `<div class="badge-u">★ ${myR}</div>` : '';
   const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
   const typeBadge = resolvedType === 'tv' 
@@ -1048,7 +1090,7 @@ function makeCard(item, type) {
 
   el.innerHTML = `
     ${poster}
-    ${scoreBadge}${userBadge}${watchBadge}${typeBadge}${quickWatchBtn}
+    ${scoreBadge}${imdbBadge}${userBadge}${watchBadge}${typeBadge}${quickWatchBtn}
     <div class="card-body">
       <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
@@ -1057,7 +1099,43 @@ function makeCard(item, type) {
       </div>
     </div>
   `;
+
+  // Lazy load IMDb rating if OMDB key exists
+  if (OMDB_KEY) {
+    fetchImdbForCard(item.id, resolvedType, key);
+  }
+
   return el;
+}
+
+async function fetchImdbForCard(id, type, key) {
+  // Check cache first
+  if (metaCache[key]?.imdb) {
+    updateImdbBadge(key, metaCache[key].imdb);
+    return;
+  }
+  
+  try {
+    const details = await tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' });
+    const imdbId = details.external_ids?.imdb_id;
+    if (imdbId) {
+      const od = await omdb(imdbId);
+      if (od?.imdbRating && od.imdbRating !== 'N/A') {
+        if (!metaCache[key]) metaCache[key] = {};
+        metaCache[key].imdb = od.imdbRating;
+        saveAll();
+        updateImdbBadge(key, od.imdbRating);
+      }
+    }
+  } catch {}
+}
+
+function updateImdbBadge(key, rating) {
+  const el = document.getElementById(`imdb-card-${key}`);
+  if (el) {
+    el.textContent = `IMDb ${rating}`;
+    el.classList.add('show');
+  }
 }
 
 // ══ PREVIEW ══
@@ -1629,7 +1707,21 @@ async function loadRecommendations() {
     const title = metaCache[key]?.title || 'sevdiğin bir içerik';
     try {
       const recData = await tmdb(`/${type}/${id}/recommendations`);
-      (recData.results || []).filter(r => !ratedIds.has(String(r.id))).forEach(item => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      (recData.results || []).filter(r => {
+        if (ratedIds.has(String(r.id))) return false;
+        if (!r.poster_path) return false;
+        if ((r.vote_count || 0) < 5) return false;
+        const releaseDate = r.release_date || r.first_air_date || '0000';
+        if (releaseDate > today && releaseDate !== '0000') {
+           // Limit future recommendations to 6 months
+           const sixMonthsLater = new Date();
+           sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+           if (releaseDate > sixMonthsLater.toISOString().split('T')[0]) return false;
+        }
+        return true;
+      }).forEach(item => {
         fetchedItems.push({ ...item, _type: type, _reason: `"${title}" benzeri` });
       });
     } catch {}
