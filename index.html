@@ -613,6 +613,7 @@ function toast(msg, ms = 2600) {
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
+function esc(s)        { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ESC closes modals
 document.addEventListener('keydown', e => {
@@ -793,6 +794,7 @@ async function loadDiscover(append = false) {
       const btn = document.createElement('button');
       btn.id = 'loadMoreBtn';
       btn.className = 'load-more-btn';
+      btn.textContent = 'Daha Fazla Yükle';
       btn.onclick = loadMore;
       btn.style.display = 'none';
       const wrap = document.querySelector('.load-more-wrap');
@@ -820,17 +822,28 @@ async function loadDiscover(append = false) {
     const params = { page: currentPage, include_adult: !nsfwFilter, 'vote_average.gte': minRating };
     if (selectedGenres.length) params.with_genres = selectedGenres.join(',');
     
+    if (ageFilter !== 'all') {
+      params.certification_country = 'US';
+      params['certification.lte']  = ageFilter === '13' ? 'PG-13' : 'R';
+    }
+
     if (currentSearch) {
       params.query = currentSearch;
       data = await tmdb(`/search/${currentType}`, params);
       titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
     } else {
-      data = await tmdb(currentGenre ? `/discover/${currentType}` : `/${currentType}/popular`, params);
+      params.sort_by = 'popularity.desc';
+      data = await tmdb(`/discover/${currentType}`, params);
       titleEl.innerHTML = `${currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler'} <small></small>`;
     }
 
     totalPages = data.total_pages || 1;
-    const items = (data.results || []).filter(item => {
+    let rawResults = data.results || [];
+    // TMDB search ignores vote_average.gte — apply client-side for search
+    if (currentSearch && minRating > 0) {
+      rawResults = rawResults.filter(i => i.vote_average >= minRating);
+    }
+    const items = rawResults.filter(item => {
       const id = `${currentType}_${item.id}`;
       if (seenIds.has(id)) return false;
       seenIds.add(id);
@@ -882,6 +895,7 @@ function makeCard(item, type) {
 
   const el       = document.createElement('div');
   el.className   = 'card';
+  el.dataset.key = key;
   el.onclick     = () => openDetail(item, resolvedType);
 
   let hoverTimer;
@@ -907,7 +921,7 @@ function makeCard(item, type) {
     ${poster}
     ${scoreBadge}${userBadge}${watchBadge}${tvBadge}
     <div class="card-body">
-      <div class="card-name" title="${title}">${title}</div>
+      <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
         <span class="card-score">${item.vote_average > 0 ? item.vote_average.toFixed(1) : '—'}</span>
         <span>${year || '—'}</span>
@@ -976,8 +990,8 @@ function openDetail(item, type, reason = null) {
       style="position:absolute;top:12px;right:12px;z-index:10">✕</button>
     ${backdropHtml}
     <div class="detail-bd">
-      <div class="detail-title">${title}</div>
-      ${reason ? `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">★ ${reason}</div>` : ''}
+      <div class="detail-title">${esc(title)}</div>
+      ${reason ? `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">★ ${esc(reason)}</div>` : ''}
       <div class="detail-scores" id="detailScores">
         ${item.vote_average > 0
           ? `<div class="score-pill score-tmdb">
@@ -1131,9 +1145,18 @@ function saveRating() {
     };
     saveAll();
     toast(`★ ${pendingRating}/10 kaydedildi`);
+    // Update card badge in-place — no full grid reload
+    const card = document.querySelector(`.card[data-key="${key}"]`);
+    if (card) {
+      card.querySelector('.badge-u')?.remove();
+      card.querySelector('.badge-w')?.remove();
+      const badge = document.createElement('div');
+      badge.className = 'badge-u';
+      badge.textContent = `★ ${pendingRating}`;
+      card.insertBefore(badge, card.querySelector('.card-body'));
+    }
   }
   closeModal('detailModal');
-  if (activePage === 'discover') loadDiscover();
 }
 
 function toggleWatch() {
@@ -1362,6 +1385,11 @@ async function loadRecommendations() {
   const topRated = [...keys]
     .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'))
     .sort((a, b) => ratings[b] - ratings[a]);
+
+  if (!topRated.length) {
+    cnt.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Daha yüksek puan gerekiyor</h3><p>Öneri alabilmek için en az bir içeriği 7 veya üzeri puanla.</p></div>';
+    return;
+  }
 
   let fetchedItems = [];
   const genreMap = new Map(Object.entries(await getGenres()));
