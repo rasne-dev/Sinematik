@@ -786,7 +786,7 @@ function applyAdvancedFilters() {
   loadDiscover();
 }
 
-async function loadDiscover(append = false) {
+async function loadDiscover(append = false, _retries = 0) {
   const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
   
@@ -856,8 +856,18 @@ async function loadDiscover(append = false) {
       grid.innerHTML = '';
     }
 
-    if (!items.length && !append) {
-      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>Sonuç bulunamadı</h3><p>Farklı bir şey dene</p></div>';
+    if (!items.length) {
+      if (append && _retries < 5 && currentPage < Math.min(totalPages, 10)) {
+        // This page had only already-seen items, try the next one
+        currentPage++;
+        await loadDiscover(true, _retries + 1);
+        return;
+      }
+      if (!append) {
+        grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><h3>Sonuç bulunamadı</h3><p>Farklı bir şey dene</p></div>';
+      } else {
+        moreBtn.classList.remove('visible');
+      }
       return;
     }
 
@@ -881,7 +891,7 @@ async function loadDiscover(append = false) {
 
 function loadMore() {
   currentPage++;
-  loadDiscover(true);
+  loadDiscover(true, 0);
 }
 
 // ══ CARD ══
