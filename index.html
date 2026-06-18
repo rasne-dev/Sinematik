@@ -168,7 +168,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .detail-meta span{display:flex;align-items:center;gap:3px}
 .genre-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
 .genre-tag{padding:3px 9px;border-radius:50px;border:1px solid var(--border);font-size:11px;color:var(--muted)}
-.detail-overview{font-size:13px;line-height:1.7;color:rgba(238,235,240,.72);margin-bottom:16px;max-height:80px;overflow-y:auto}
+.detail-overview{font-size:13px;line-height:1.7;color:rgba(238,235,240,.72);margin-bottom:16px;max-height:200px;overflow-y:auto}
 .cast-row{display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
 .cast-item{flex-shrink:0;text-align:center;width:60px}
 .cast-img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--surface2);display:block;margin:0 auto 4px;border:1px solid var(--border)}
@@ -181,6 +181,59 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .detail-actions{display:flex;gap:7px;flex-wrap:wrap}
 .detail-loading{font-size:12px;color:var(--muted);padding:8px 0;display:flex;align-items:center;gap:6px}
 
+/* QUICK ACTION & TOP BTN */
+.back-to-top {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 150;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: all .2s;
+}
+.back-to-top:hover { border-color: var(--accent2); transform: translateY(-3px); }
+.back-to-top.show { display: flex; }
+
+.quick-watch {
+  position: absolute;
+  top: 40px;
+  right: 7px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all .2s;
+  font-size: 14px;
+  z-index: 5;
+}
+@media(hover:hover){ .card:hover .quick-watch { opacity: 1; } }
+.quick-watch:hover { background: var(--accent2); border-color: var(--accent2); }
+.quick-watch.active { background: var(--accent2); border-color: var(--accent2); opacity: 1; }
+
+/* GENRE HIERARCHY */
+.genre-tag[data-g="28"], .genre-tag[data-g="10759"] { background: rgba(224,85,85,0.1); color: #e05555; border-color: rgba(224,85,85,0.2); } /* Action */
+.genre-tag[data-g="35"] { background: rgba(85,196,135,0.1); color: #55c487; border-color: rgba(85,196,135,0.2); } /* Comedy */
+.genre-tag[data-g="18"] { background: rgba(124,106,240,0.1); color: #7c6af0; border-color: rgba(124,106,240,0.2); } /* Drama */
+.genre-tag[data-g="27"] { background: rgba(144,144,144,0.1); color: #909090; border-color: rgba(144,144,144,0.2); } /* Horror */
+.genre-tag[data-g="878"], .genre-tag[data-g="10765"] { background: rgba(124,106,240,0.1); color: var(--accent2); border-color: rgba(124,106,240,0.2); } /* Sci-Fi */
+
 .btn{padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:opacity .2s;border:none;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
 .btn-purple{background:var(--accent2);color:#fff}
 .btn-purple:hover{opacity:.85}
@@ -190,6 +243,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .btn-gold:hover{background:rgba(232,184,109,.18)}
 .btn-imdb{background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.25);color:var(--imdb);font-size:12px;padding:7px 12px}
 .btn-imdb:hover{background:rgba(245,197,24,.18)}
+.btn-red{background:rgba(224,85,85,0.1);border:1px solid rgba(224,85,85,0.22);color:#e05555}
+.btn-red:hover{background:rgba(224,85,85,0.18)}
 
 /* SETTINGS */
 .settings-section{margin-bottom:20px}
@@ -489,6 +544,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   <div class="detail-modal" id="detailContent"></div>
 </div>
 
+<div class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
 <div class="toast" id="toast"></div>
 <div class="preview-tooltip" id="previewTooltip"></div>
 
@@ -513,6 +569,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initNav();
     buildFilterGenres();
     if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
+    
+    // Back to top scroll listener
+    window.addEventListener('scroll', () => {
+      const btn = document.getElementById('backToTop');
+      if (window.scrollY > 500) btn.classList.add('show');
+      else btn.classList.remove('show');
+    });
 });
 
 // ══ COOKIES ══
@@ -582,13 +645,15 @@ let activePage    = 'discover';
 let nsfwFilter    = ls('fo_nsfw') !== 'false';
 let ageFilter     = ls('fo_age')  || 'all';
 
+let searchController = null;
+
 // ══ API ══
-async function tmdb(path, params = {}) {
+async function tmdb(path, params = {}, signal = null) {
   const url = new URL(BASE + path);
   url.searchParams.set('api_key', TMDB_KEY);
   url.searchParams.set('language', 'tr-TR');
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const r = await fetch(url);
+  const r = await fetch(url, { signal });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -790,6 +855,9 @@ async function loadDiscover(append = false, _retries = 0) {
   const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
   
+  if (searchController) searchController.abort();
+  searchController = new AbortController();
+
   if (!document.getElementById('loadMoreBtn')) {
       const btn = document.createElement('button');
       btn.id = 'loadMoreBtn';
@@ -829,20 +897,29 @@ async function loadDiscover(append = false, _retries = 0) {
 
     if (currentSearch) {
       params.query = currentSearch;
-      data = await tmdb(`/search/${currentType}`, params);
+      data = await tmdb(`/search/${currentType}`, params, searchController.signal);
       titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
     } else {
       params.sort_by = 'popularity.desc';
-      data = await tmdb(`/discover/${currentType}`, params);
+      data = await tmdb(`/discover/${currentType}`, params, searchController.signal);
       titleEl.innerHTML = `${currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler'} <small></small>`;
     }
 
     totalPages = data.total_pages || 1;
     let rawResults = data.results || [];
-    // TMDB search ignores vote_average.gte — apply client-side for search
-    if (currentSearch && minRating > 0) {
-      rawResults = rawResults.filter(i => i.vote_average >= minRating);
+    
+    // TMDB search/discover endpoint filtering fixes
+    if (currentSearch) {
+      if (minRating > 0) {
+        rawResults = rawResults.filter(i => i.vote_average >= minRating);
+      }
+      if (selectedGenres.length > 0) {
+        rawResults = rawResults.filter(i => 
+          i.genre_ids && selectedGenres.every(id => i.genre_ids.includes(parseInt(id)))
+        );
+      }
     }
+
     const items = rawResults.filter(item => {
       const id = `${currentType}_${item.id}`;
       if (seenIds.has(id)) return false;
@@ -880,6 +957,7 @@ async function loadDiscover(append = false, _retries = 0) {
     if (currentPage < Math.min(totalPages, 10)) moreBtn.classList.add('visible');
 
   } catch (e) {
+    if (e.name === 'AbortError') return;
     console.error("LoadDiscover error:", e);
     if (append) {
       document.getElementById('appendSpinner')?.remove();
@@ -927,9 +1005,17 @@ function makeCard(item, type) {
   const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
   const tvBadge = resolvedType === 'tv' ? `<div class="badge-tv">DİZİ</div>` : '';
 
+  const quickWatchBtn = `
+    <div class="quick-watch ${inW ? 'active' : ''}" 
+      onclick="event.stopPropagation(); toggleWatchQuick('${key}', ${JSON.stringify(item).replace(/"/g, '&quot;')}, '${resolvedType}', this)"
+      title="${inW ? 'İzleme listesinden çıkar' : 'İzleme listesine ekle'}">
+      ${inW ? '✓' : '+'}
+    </div>
+  `;
+
   el.innerHTML = `
     ${poster}
-    ${scoreBadge}${userBadge}${watchBadge}${tvBadge}
+    ${scoreBadge}${userBadge}${watchBadge}${tvBadge}${quickWatchBtn}
     <div class="card-body">
       <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
@@ -1039,12 +1125,20 @@ function openDetail(item, type, reason = null) {
   fetchDetailExtras(item.id, type);
 }
 
+function searchCast(name) {
+  closeModal('detailModal');
+  document.getElementById('searchInput').value = name;
+  onSearchInput(name);
+  doSearch();
+}
+
 async function fetchDetailExtras(id, type) {
   try {
-    const [details, credits, releaseDates] = await Promise.all([
+    const [details, credits, releaseDates, videos] = await Promise.all([
       tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' }),
       tmdb(`/${type}/${id}/credits`).catch(() => ({ cast: [] })),
       tmdb(`/${type}/${id}/release_dates`).catch(() => ({ results: [] })),
+      tmdb(`/${type}/${id}/videos`).catch(() => ({ results: [] })),
     ]);
 
     // Age Rating
@@ -1077,7 +1171,7 @@ async function fetchDetailExtras(id, type) {
     const genreEl = document.getElementById('detailGenres');
     if (genreEl && details.genres?.length) {
       genreEl.innerHTML = details.genres.slice(0, 5)
-        .map(g => `<span class="genre-tag">${g.name}</span>`).join('');
+        .map(g => `<span class="genre-tag" data-g="${g.id}">${g.name}</span>`).join('');
     }
 
     const ovEl = document.getElementById('detailOverview');
@@ -1086,13 +1180,24 @@ async function fetchDetailExtras(id, type) {
     const castEl = document.getElementById('detailCast');
     if (castEl && credits.cast?.length) {
       castEl.innerHTML = credits.cast.slice(0, 8).map(p => `
-        <div class="cast-item">
+        <div class="cast-item" onclick="searchCast('${esc(p.name)}')" style="cursor:pointer" title="Diğer işlerini ara">
           ${p.profile_path
             ? `<img class="cast-img" src="${IMG_FACE}${p.profile_path}" alt="${p.name}" loading="lazy">`
             : `<div class="cast-img" style="background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>`}
           <div class="cast-name">${p.name}</div>
         </div>
       `).join('');
+    }
+
+    const trailer = videos.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+    if (trailer) {
+      const actions = document.querySelector('.detail-actions');
+      const trailerBtn = document.createElement('a');
+      trailerBtn.className = 'btn btn-red';
+      trailerBtn.href = `https://www.youtube.com/watch?v=${trailer.key}`;
+      trailerBtn.target = '_blank';
+      trailerBtn.innerHTML = '▶ Fragman İzle';
+      actions.insertBefore(trailerBtn, actions.firstChild);
     }
 
     const imdbId   = details.external_ids?.imdb_id;
@@ -1133,6 +1238,7 @@ function clickD(n) { pendingRating = n; resetD(); }
 function deleteRatingFromModal(key) {
   if (!confirm('Bu puanı silmek istiyor musun?')) return;
   delete ratings[key];
+  delete metaCache[key];
   saveAll();
   closeModal('detailModal');
   toast('Puan silindi');
@@ -1153,13 +1259,19 @@ function saveRating() {
       score:  item.vote_average,
       type,
     };
+    
+    // Auto-remove from watchlist when rated
+    if (watchlist[key]) delete watchlist[key];
+
     saveAll();
     toast(`★ ${pendingRating}/10 kaydedildi`);
-    // Update card badge in-place — no full grid reload
+    
+    // Update card UI in-place
     const card = document.querySelector(`.card[data-key="${key}"]`);
     if (card) {
       card.querySelector('.badge-u')?.remove();
       card.querySelector('.badge-w')?.remove();
+      card.querySelector('.quick-watch')?.classList.remove('active');
       const badge = document.createElement('div');
       badge.className = 'badge-u';
       badge.textContent = `★ ${pendingRating}`;
@@ -1172,11 +1284,17 @@ function saveRating() {
 function toggleWatch() {
   if (!currentItem) return;
   const { item, type } = currentItem;
-  const key = `${type}_${item.id}`;
-  const btn = document.getElementById('watchBtn');
+  toggleWatchQuick(`${type}_${item.id}`, item, type);
+}
+
+function toggleWatchQuick(key, item, type, btnEl = null) {
   if (watchlist[key]) {
     delete watchlist[key];
-    btn.textContent = '+ İzleme Listesine Ekle';
+    if (btnEl) {
+      btnEl.classList.remove('active');
+      btnEl.textContent = '+';
+      btnEl.title = 'İzleme listesine ekle';
+    }
     toast('İzleme listesinden çıkarıldı');
   } else {
     watchlist[key] = {
@@ -1186,10 +1304,33 @@ function toggleWatch() {
       year:   (item.release_date || item.first_air_date || '').slice(0, 4),
       score:  item.vote_average || 0,
     };
-    btn.textContent = '🕐 Listeden Çıkar';
+    if (btnEl) {
+      btnEl.classList.add('active');
+      btnEl.textContent = '✓';
+      btnEl.title = 'İzleme listesinden çıkar';
+    }
     toast('✓ İzleme listesine eklendi');
   }
   saveAll();
+  
+  // Update UI if in watchlist page or if detail modal is open
+  if (activePage === 'watchlist') renderWatchlist();
+  if (currentItem && `${currentItem.type}_${currentItem.item.id}` === key) {
+    const mainWatchBtn = document.getElementById('watchBtn');
+    if (mainWatchBtn) mainWatchBtn.textContent = watchlist[key] ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle';
+  }
+  
+  // Update card badge
+  const card = document.querySelector(`.card[data-key="${key}"]`);
+  if (card) {
+    card.querySelector('.badge-w')?.remove();
+    if (watchlist[key] && !ratings[key]) {
+        const badge = document.createElement('div');
+        badge.className = 'badge-w';
+        badge.textContent = '🕐';
+        card.insertBefore(badge, card.querySelector('.card-body'));
+    }
+  }
 }
 
 function renderWatchlist() {
@@ -1335,7 +1476,9 @@ function updateRating(key, n, row) {
   toast(`★ ${n}/10`);
 }
 function deleteRating(key) {
-  delete ratings[key]; saveAll();
+  delete ratings[key];
+  delete metaCache[key];
+  saveAll();
   renderRated();
   toast('Silindi');
 }
@@ -1392,19 +1535,21 @@ async function loadRecommendations() {
   displayedRecsCount = RECS_PER_PAGE;
   
   const ratedIds = new Set(keys.map(k => k.split('_').slice(1).join('')));
-  const topRated = [...keys]
-    .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'))
-    .sort((a, b) => ratings[b] - ratings[a]);
-
+  let topRated = [...keys]
+    .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'));
+  
   if (!topRated.length) {
     cnt.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Daha yüksek puan gerekiyor</h3><p>Öneri alabilmek için en az bir içeriği 7 veya üzeri puanla.</p></div>';
     return;
   }
 
+  // Shuffle and pick 3 to get different recommendations each time
+  topRated = topRated.sort(() => Math.random() - 0.5).slice(0, 3);
+
   let fetchedItems = [];
   const genreMap = new Map(Object.entries(await getGenres()));
 
-  for (const key of topRated.slice(0, 3)) {
+  for (const key of topRated) {
     const parts = key.split('_');
     const type  = parts[0];
     const id    = parts.slice(1).join('_');
