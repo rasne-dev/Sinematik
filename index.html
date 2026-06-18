@@ -230,6 +230,10 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 /* MOBILE */
 .mobile-nav{display:none}
 
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
 /* COOKIE BANNER */
 .cookie-banner{position:fixed;bottom:0;left:0;right:0;background:var(--surface2);padding:12px;text-align:center;font-size:12px;border-top:1px solid var(--border);z-index:999;display:none}
 .cookie-banner button{margin-left:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
@@ -293,8 +297,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <div id="filterGenres" class="bar-chips"></div>
       <div class="bar-divider"></div>
       <span class="bar-label">Min Puan: <span id="minRatingVal">0</span></span>
-      <input type="range" id="filterMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('minRatingVal').textContent = this.value">
-      <button class="btn btn-purple" onclick="applyAdvancedFilters()" style="padding:4px 10px;font-size:11px">Uygula</button>
+      <input type="range" id="filterMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('minRatingVal').textContent = this.value; applyAdvancedFilters()">
     </div>
     <div class="section-title" id="discoverTitle">Popüler Filmler <small></small></div>
     <div id="discoverGrid" class="card-grid">
@@ -321,8 +324,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       </div>
       <div class="bar-divider"></div>
       <span class="bar-label">Min. Puan: <span id="recMinRatingVal">0</span></span>
-      <input type="range" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('recMinRatingVal').textContent = this.value">
-      <button class="btn btn-purple" onclick="applyRecFilters()" style="padding:4px 10px;font-size:11px">Uygula</button>
+      <input type="range" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('recMinRatingVal').textContent = this.value; applyRecFilters()">
       <div class="bar-divider"></div>
       <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
@@ -356,7 +358,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
         <span class="bar-chip active" data-sort="rating" onclick="setSort(this)">Puana Göre</span>
-        <span class="bar-chip"        data-sort="rating_desc" onclick="setSort(this)">IMDb (Yüksek)</span>
+        <span class="bar-chip"        data-sort="rating_desc" onclick="setSort(this)">TMDB (Yüksek)</span>
         <span class="bar-chip"        data-sort="alpha"  onclick="setSort(this)">A–Z</span>
         <span class="bar-chip"        data-sort="year"   onclick="setSort(this)">Yıl</span>
       </div>
@@ -408,7 +410,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
           <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="nsfwFilter"> NSFW (Yetişkin) İçerikleri Gizle
           </label>
-          <label style="font-size:13px;gap:8px">
+          <label style="font-size:13px;display:flex;align-items:center;gap:8px">
             Yaş Filtresi: 
             <select id="ageFilter" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 5px">
               <option value="all">Filtre Yok</option>
@@ -737,6 +739,7 @@ function buildFilterGenres() {
     c.onclick = () => {
       c.classList.toggle('active');
       selectedGenres = [...row.querySelectorAll('.bar-chip.active')].map(el => el.dataset.id);
+      currentPage = 1; seenIds.clear(); loadDiscover();
     };
     row.appendChild(c);
   });
@@ -792,7 +795,9 @@ async function loadDiscover(append = false) {
       btn.className = 'load-more-btn';
       btn.onclick = loadMore;
       btn.style.display = 'none';
-      document.body.appendChild(btn);
+      const wrap = document.querySelector('.load-more-wrap');
+      if (wrap) wrap.insertBefore(btn, wrap.firstChild);
+      else document.body.appendChild(btn);
   }
   const moreBtn = document.getElementById('loadMoreBtn');
 
@@ -919,8 +924,11 @@ async function showPreview(item, type, el) {
   tt.innerHTML = 'Yükleniyor...';
 
   const rect = el.getBoundingClientRect();
-  tt.style.left = (rect.left + rect.width + 10) + 'px';
-  tt.style.top = rect.top + 'px';
+  const ttW = 280;
+  let left = rect.left + rect.width + 10;
+  if (left + ttW > window.innerWidth - 10) left = rect.left - ttW - 10;
+  tt.style.left = Math.max(10, left) + 'px';
+  tt.style.top = Math.min(rect.top, window.innerHeight - 220) + 'px';
 
   try {
     const details = await tmdb(`/${type}/${item.id}`, { append_to_response: 'credits' });
@@ -995,6 +1003,7 @@ function openDetail(item, type, reason = null) {
         <button class="btn btn-gold" id="watchBtn" onclick="toggleWatch()">
           ${inW ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle'}
         </button>
+        ${ratings[key] ? `<button class="btn btn-ghost" onclick="deleteRatingFromModal('${key}')" style="border-color:var(--danger);color:var(--danger)">✕ Puanı Kaldır</button>` : ''}
         <a id="imdbLink" class="btn btn-imdb" href="#" target="_blank" style="display:none">
           <span style="font-weight:800;font-size:11px">IMDb</span>'de Gör ↗
         </a>
@@ -1096,6 +1105,16 @@ function resetD() {
   });
 }
 function clickD(n) { pendingRating = n; resetD(); }
+
+function deleteRatingFromModal(key) {
+  if (!confirm('Bu puanı silmek istiyor musun?')) return;
+  delete ratings[key];
+  saveAll();
+  closeModal('detailModal');
+  toast('Puan silindi');
+  if (activePage === 'discover') loadDiscover();
+  if (activePage === 'rated') renderRated();
+}
 
 function saveRating() {
   if (!currentItem) { closeModal('detailModal'); return; }
