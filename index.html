@@ -92,7 +92,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .badge-tmdb{font-size:8px;opacity:.6;font-weight:400}
 .badge-u{position:absolute;top:7px;left:7px;background:var(--accent2);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:#fff}
 .badge-w{position:absolute;bottom:52px;right:7px;background:rgba(232,184,109,.12);border:1px solid rgba(232,184,109,.3);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:600;color:var(--accent)}
-.badge-tv{position:absolute;bottom:52px;left:7px;background:rgba(124,106,240,.15);border:1px solid rgba(124,106,240,.3);border-radius:5px;padding:2px 6px;font-size:9px;font-weight:600;color:var(--accent2)}
+.badge-tv{position:absolute;bottom:52px;left:7px;background:rgba(124,106,240,0.15);border:1px solid rgba(124,106,240,0.3);border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;color:var(--accent2);backdrop-filter:blur(4px)}
+.badge-movie{position:absolute;bottom:52px;left:7px;background:rgba(232,184,109,0.15);border:1px solid rgba(232,184,109,0.3);border-radius:5px;padding:2px 7px;font-size:9px;font-weight:700;color:var(--accent);backdrop-filter:blur(4px)}
 
 /* LOAD MORE */
 .load-more-wrap{text-align:center;margin-bottom:40px}
@@ -173,7 +174,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .cast-item{flex-shrink:0;text-align:center;width:60px}
 .cast-img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--surface2);display:block;margin:0 auto 4px;border:1px solid var(--border)}
 .cast-name{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px}
-.rate-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px}
+.rate-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.rating-indicator{font-size:14px;color:var(--accent);font-weight:800;font-family:var(--sans)}
 .detail-stars{display:flex;gap:3px;margin-bottom:16px}
 .dstar{font-size:22px;cursor:pointer;color:rgba(255,255,255,.1);transition:color .08s,transform .1s;user-select:none}
 .dstar.on{color:var(--accent)}
@@ -412,7 +414,8 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <div class="bar-divider"></div>
       <span class="bar-label">Sırala:</span>
       <div class="bar-chips">
-        <span class="bar-chip active" data-sort="rating" onclick="setSort(this)">Puana Göre</span>
+        <span class="bar-chip active" data-sort="date"   onclick="setSort(this)">Son Puanlananlar</span>
+        <span class="bar-chip"        data-sort="rating" onclick="setSort(this)">Puana Göre</span>
         <span class="bar-chip"        data-sort="rating_desc" onclick="setSort(this)">TMDB (Yüksek)</span>
         <span class="bar-chip"        data-sort="alpha"  onclick="setSort(this)">A–Z</span>
         <span class="bar-chip"        data-sort="year"   onclick="setSort(this)">Yıl</span>
@@ -639,7 +642,7 @@ let currentPage   = 1;
 let totalPages    = 1;
 let currentItem   = null;
 let pendingRating = 0;
-let sortMode      = 'rating';
+let sortMode      = 'date';
 let typeFilter    = 'all';
 let activePage    = 'discover';
 let nsfwFilter    = ls('fo_nsfw') !== 'false';
@@ -900,9 +903,37 @@ async function loadDiscover(append = false, _retries = 0) {
       data = await tmdb(`/search/${currentType}`, params, searchController.signal);
       titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
     } else {
-      params.sort_by = 'popularity.desc';
+      // Provide variety when no specific search is active
+      const sorts = [
+        'popularity.desc', 
+        'vote_average.desc', 
+        'primary_release_date.desc',
+        'revenue.desc',
+        'vote_count.desc'
+      ];
+      // Use a consistent sort for the same "session" or day, or just random
+      if (!append) {
+        window._currentSort = sorts[Math.floor(Math.random() * sorts.length)];
+      }
+      
+      params.sort_by = window._currentSort || 'popularity.desc';
+      
+      // Ensure we have some minimum votes for "top rated" style sorts
+      if (params.sort_by.includes('vote_average')) {
+        params['vote_count.gte'] = 200;
+      }
+
       data = await tmdb(`/discover/${currentType}`, params, searchController.signal);
-      titleEl.innerHTML = `${currentType === 'movie' ? 'Popüler Filmler' : 'Popüler Diziler'} <small></small>`;
+      
+      const sortLabels = {
+        'popularity.desc': 'Popüler',
+        'vote_average.desc': 'En Yüksek Puanlı',
+        'primary_release_date.desc': 'Yeni Vizyona Giren',
+        'revenue.desc': 'En Çok Hasılat Yapan',
+        'vote_count.desc': 'En Çok Oylanan'
+      };
+      const label = sortLabels[params.sort_by] || 'Önerilen';
+      titleEl.innerHTML = `${label} ${currentType === 'movie' ? 'Filmler' : 'Diziler'} <small></small>`;
     }
 
     totalPages = data.total_pages || 1;
@@ -977,7 +1008,7 @@ function makeCard(item, type) {
   const title = item.title || item.name || '—';
   const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
   const key   = `${type}_${item.id}`;
-  const myR   = ratings[key];
+  const myR   = getRatingValue(key);
   const inW   = !!watchlist[key];
   const resolvedType = item.media_type === 'tv' ? 'tv' : type;
 
@@ -1003,7 +1034,9 @@ function makeCard(item, type) {
     ? `<div class="badge"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
   const userBadge = myR ? `<div class="badge-u">★ ${myR}</div>` : '';
   const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
-  const tvBadge = resolvedType === 'tv' ? `<div class="badge-tv">DİZİ</div>` : '';
+  const typeBadge = resolvedType === 'tv' 
+    ? `<div class="badge-tv">DİZİ</div>` 
+    : `<div class="badge-movie">FİLM</div>`;
 
   const quickWatchBtn = `
     <div class="quick-watch ${inW ? 'active' : ''}" 
@@ -1015,7 +1048,7 @@ function makeCard(item, type) {
 
   el.innerHTML = `
     ${poster}
-    ${scoreBadge}${userBadge}${watchBadge}${tvBadge}${quickWatchBtn}
+    ${scoreBadge}${userBadge}${watchBadge}${typeBadge}${quickWatchBtn}
     <div class="card-body">
       <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
@@ -1061,9 +1094,20 @@ function hidePreview() {
 }
 
 // ══ DETAIL MODAL ══
+function getRatingValue(key) {
+  const r = ratings[key];
+  if (typeof r === 'object' && r !== null) return r.r;
+  return r || 0;
+}
+function getRatingDate(key) {
+  const r = ratings[key];
+  if (typeof r === 'object' && r !== null) return r.d || 0;
+  return 0;
+}
+
 function openDetail(item, type, reason = null) {
   currentItem   = { item, type };
-  pendingRating = ratings[`${type}_${item.id}`] || 0;
+  pendingRating = getRatingValue(`${type}_${item.id}`);
 
   const title = item.title || item.name || '—';
   const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
@@ -1105,17 +1149,18 @@ function openDetail(item, type, reason = null) {
       </div>
       <div class="genre-tags" id="detailGenres"></div>
       ${item.overview ? `<div class="detail-overview">${item.overview}</div>` : '<div id="detailOverview"></div>'}
-      <div class="cast-row" id="detailCast"></div>
-      <div class="rate-label">Puanın (1–10)</div>
+      <div id="detailCast" class="cast-row"></div>
+      <div class="rate-label">
+        Puanın (1–10)
+        <span id="ratingVal" class="rating-indicator">${pendingRating > 0 ? pendingRating + ' / 10' : ''}</span>
+      </div>
       <div class="detail-stars" id="dStars">${stars}</div>
       <div class="detail-actions">
-        <button class="btn btn-purple" onclick="saveRating()">Kaydet</button>
         <button class="btn btn-gold" id="watchBtn" onclick="toggleWatch()">
           ${inW ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle'}
         </button>
-        ${ratings[key] ? `<button class="btn btn-ghost" onclick="deleteRatingFromModal('${key}')" style="border-color:var(--danger);color:var(--danger)">✕ Puanı Kaldır</button>` : ''}
-        <a id="imdbLink" class="btn btn-imdb" href="#" target="_blank" style="display:none">
-          <span style="font-weight:800;font-size:11px">IMDb</span>'de Gör ↗
+        <a id="imdbLink" class="btn btn-imdb" href="https://www.imdb.com/find?q=${encodeURIComponent(title + ' ' + year)}" target="_blank">
+          <span style="font-weight:800;font-size:11px">IMDb</span>'de Ara ↗
         </a>
         <button class="btn btn-ghost" onclick="closeModal('detailModal')">Kapat</button>
       </div>
@@ -1204,7 +1249,7 @@ async function fetchDetailExtras(id, type) {
     const linkEl   = document.getElementById('imdbLink');
     if (linkEl && imdbId) {
       linkEl.href    = `https://www.imdb.com/title/${imdbId}/`;
-      linkEl.style.display = 'inline-flex';
+      linkEl.innerHTML = `<span style="font-weight:800;font-size:11px">IMDb</span>'de Gör ↗`;
 
       if (OMDB_KEY) {
         const od = await omdb(imdbId);
@@ -1222,18 +1267,65 @@ async function fetchDetailExtras(id, type) {
 }
 
 function hoverD(n) {
+  document.getElementById('ratingVal').textContent = n + ' / 10';
   document.querySelectorAll('.dstar').forEach((s, i) => {
     s.textContent = i < n ? '★' : '☆';
     s.classList.toggle('on', i < n);
   });
 }
 function resetD() {
+  document.getElementById('ratingVal').textContent = pendingRating > 0 ? pendingRating + ' / 10' : '';
   document.querySelectorAll('.dstar').forEach((s, i) => {
     s.textContent = i < pendingRating ? '★' : '☆';
     s.classList.toggle('on', i < pendingRating);
   });
 }
-function clickD(n) { pendingRating = n; resetD(); }
+function clickD(n) { 
+  if (!currentItem) return;
+  const { item, type } = currentItem;
+  const key = `${type}_${item.id}`;
+
+  if (pendingRating === n) {
+    // Toggle off: if clicking the same star, remove rating
+    delete ratings[key];
+    delete metaCache[key];
+    pendingRating = 0;
+    toast('Puan kaldırıldı');
+  } else {
+    // Save: automatic save on click
+    pendingRating = n;
+    ratings[key]   = { r: n, d: Date.now() };
+    metaCache[key] = {
+      title:  item.title || item.name,
+      poster: item.poster_path,
+      year:   (item.release_date || item.first_air_date || '').slice(0, 4),
+      score:  item.vote_average,
+      type,
+    };
+    if (watchlist[key]) delete watchlist[key];
+    toast(`★ ${n}/10 kaydedildi`);
+  }
+  
+  saveAll();
+  resetD();
+  
+  // Update card UI
+  const card = document.querySelector(`.card[data-key="${key}"]`);
+  if (card) {
+      card.querySelector('.badge-u')?.remove();
+      card.querySelector('.badge-w')?.remove();
+      card.querySelector('.quick-watch')?.classList.remove('active');
+      if (pendingRating > 0) {
+          const badge = document.createElement('div');
+          badge.className = 'badge-u';
+          badge.textContent = `★ ${pendingRating}`;
+          card.insertBefore(badge, card.querySelector('.card-body'));
+      }
+  }
+  
+  // Automatic close after save
+  setTimeout(() => closeModal('detailModal'), 300);
+}
 
 function deleteRatingFromModal(key) {
   if (!confirm('Bu puanı silmek istiyor musun?')) return;
@@ -1244,41 +1336,6 @@ function deleteRatingFromModal(key) {
   toast('Puan silindi');
   if (activePage === 'discover') loadDiscover();
   if (activePage === 'rated') renderRated();
-}
-
-function saveRating() {
-  if (!currentItem) { closeModal('detailModal'); return; }
-  const { item, type } = currentItem;
-  const key = `${type}_${item.id}`;
-  if (pendingRating > 0) {
-    ratings[key]   = pendingRating;
-    metaCache[key] = {
-      title:  item.title || item.name,
-      poster: item.poster_path,
-      year:   (item.release_date || item.first_air_date || '').slice(0, 4),
-      score:  item.vote_average,
-      type,
-    };
-    
-    // Auto-remove from watchlist when rated
-    if (watchlist[key]) delete watchlist[key];
-
-    saveAll();
-    toast(`★ ${pendingRating}/10 kaydedildi`);
-    
-    // Update card UI in-place
-    const card = document.querySelector(`.card[data-key="${key}"]`);
-    if (card) {
-      card.querySelector('.badge-u')?.remove();
-      card.querySelector('.badge-w')?.remove();
-      card.querySelector('.quick-watch')?.classList.remove('active');
-      const badge = document.createElement('div');
-      badge.className = 'badge-u';
-      badge.textContent = `★ ${pendingRating}`;
-      card.insertBefore(badge, card.querySelector('.card-body'));
-    }
-  }
-  closeModal('detailModal');
 }
 
 function toggleWatch() {
@@ -1387,7 +1444,7 @@ function renderRated() {
   const movies = allKeys.filter(k => k.startsWith('movie_')).length;
   const series = allKeys.filter(k => k.startsWith('tv_')).length;
   const avg    = allKeys.length
-    ? (allKeys.reduce((s, k) => s + ratings[k], 0) / allKeys.length).toFixed(1) : '—';
+    ? (allKeys.reduce((s, k) => s + getRatingValue(k), 0) / allKeys.length).toFixed(1) : '—';
 
   stats.innerHTML = `
     <div class="stat"><div class="stat-n">${allKeys.length}</div><div class="stat-l">Toplam</div></div>
@@ -1403,14 +1460,15 @@ function renderRated() {
   if (!keys.length) {
     const msg = typeFilter === 'all'
       ? '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>'
-      : `<div class="empty"><div class="empty-icon">${typeFilter === 'movie' ? '🎬' : '📺'}</div><h3>Bu türde puanlanan içerik yok</h3></div>`;
+      : `<div class="empty"><div class="empty-icon">${typeFilter === 'movie' ? '🎬' : '🎬'}</div><h3>Bu türde puanlanan içerik yok</h3></div>`;
     list.innerHTML = msg;
     return;
   }
 
   const sorted = [...keys].sort((a, b) => {
     const ma = metaCache[a] || {}, mb = metaCache[b] || {};
-    if (sortMode === 'rating') return ratings[b] - ratings[a];
+    if (sortMode === 'date')   return getRatingDate(b) - getRatingDate(a);
+    if (sortMode === 'rating') return getRatingValue(b) - getRatingValue(a);
     if (sortMode === 'rating_desc') return (mb.score || 0) - (ma.score || 0);
     if (sortMode === 'alpha')  return (ma.title || '').localeCompare(mb.title || '', 'tr');
     if (sortMode === 'year')   return (mb.year  || '0').localeCompare(ma.year  || '0');
@@ -1420,7 +1478,7 @@ function renderRated() {
   list.innerHTML = '';
   sorted.forEach(key => {
     const meta   = metaCache[key] || {};
-    const rating = ratings[key];
+    const rating = getRatingValue(key);
     const type   = key.split('_')[0];
     const el     = document.createElement('div');
     el.className = 'rated-item';
@@ -1464,14 +1522,14 @@ function hoverRated(row, n) {
   });
 }
 function resetRated(row, key) {
-  const r = ratings[key] || 0;
+  const r = getRatingValue(key);
   row.querySelectorAll('.star').forEach((s, i) => {
     s.textContent = i < r ? '★' : '☆';
     s.classList.toggle('on', i < r);
   });
 }
 function updateRating(key, n, row) {
-  ratings[key] = n; saveAll();
+  ratings[key] = { r: n, d: Date.now() }; saveAll();
   resetRated(row, key);
   toast(`★ ${n}/10`);
 }
@@ -1484,7 +1542,7 @@ function deleteRating(key) {
 }
 
 // ══ RECOMMENDATIONS ══
-let recGenreFilter = '';
+let recSelectedGenres = [];
 let recTypeFilter  = '';
 let recMinRating   = 0;
 let recSortMode    = 'popularity';
@@ -1493,9 +1551,24 @@ let displayedRecsCount = 0;
 const RECS_PER_PAGE = 12;
 
 function setRecGenre(el, genreId) {
-  document.querySelectorAll('#recGenreChips .bar-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  recGenreFilter = genreId;
+  if (genreId === '') {
+    recSelectedGenres = [];
+    document.querySelectorAll('#recGenreChips .bar-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  } else {
+    document.querySelector('#recGenreChips .bar-chip[onclick*="\'\'"]').classList.remove('active');
+    const idx = recSelectedGenres.indexOf(parseInt(genreId));
+    if (idx > -1) {
+      recSelectedGenres.splice(idx, 1);
+      el.classList.remove('active');
+    } else {
+      recSelectedGenres.push(parseInt(genreId));
+      el.classList.add('active');
+    }
+    if (recSelectedGenres.length === 0) {
+      document.querySelector('#recGenreChips .bar-chip[onclick*="\'\'"]').classList.add('active');
+    }
+  }
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations();
 }
@@ -1565,11 +1638,15 @@ async function loadRecommendations() {
   allRecommendations = [...new Map(fetchedItems.map(item => [item.id, item])).values()];
   
   const chipRow = document.getElementById('recGenreChips');
-  const uniqueIds = new Set(allRecommendations.flatMap(i => i.genre_ids || []));
-  chipRow.innerHTML = `<span class="bar-chip ${!recGenreFilter ? 'active' : ''}" onclick="setRecGenre(this, '')">Tümü</span>`;
+  const uniqueIds = Array.from(new Set(allRecommendations.flatMap(i => i.genre_ids || []))).sort((a,b) => {
+    return (genreMap.get(String(a))||'').localeCompare(genreMap.get(String(b))||'');
+  });
+
+  chipRow.innerHTML = `<span class="bar-chip ${recSelectedGenres.length === 0 ? 'active' : ''}" onclick="setRecGenre(this, '')">Tümü</span>`;
   uniqueIds.forEach(gid => {
     const name = genreMap.get(String(gid)) || 'Tür ' + gid;
-    chipRow.innerHTML += `<span class="bar-chip ${recGenreFilter === String(gid) ? 'active' : ''}" onclick="setRecGenre(this, '${gid}')">${name}</span>`;
+    const isActive = recSelectedGenres.includes(parseInt(gid));
+    chipRow.innerHTML += `<span class="bar-chip ${isActive ? 'active' : ''}" onclick="setRecGenre(this, '${gid}')">${name}</span>`;
   });
 
   renderRecommendations();
@@ -1587,7 +1664,9 @@ function renderRecommendations() {
   cnt.style.opacity = '0';
   
   let filtered = allRecommendations;
-  if (recGenreFilter) filtered = filtered.filter(i => i.genre_ids && i.genre_ids.includes(parseInt(recGenreFilter)));
+  if (recSelectedGenres.length > 0) {
+    filtered = filtered.filter(i => i.genre_ids && recSelectedGenres.some(gid => i.genre_ids.includes(gid)));
+  }
   if (recTypeFilter)  filtered = filtered.filter(i => i._type === recTypeFilter);
   if (recMinRating)   filtered = filtered.filter(i => i.vote_average >= recMinRating);
   
@@ -1670,7 +1749,7 @@ async function handleFile(file) {
         if (results.length) {
           const m   = results[0];
           const key = `${type}_${m.id}`;
-          ratings[key]   = rating;
+          ratings[key]   = { r: rating, d: Date.now() };
           metaCache[key] = {
             title:  m.title || m.name || title,
             poster: m.poster_path,
@@ -1680,7 +1759,7 @@ async function handleFile(file) {
           };
         } else {
           const key = `${type}_imdb_${imdbId}`;
-          ratings[key] = rating;
+          ratings[key] = { r: rating, d: Date.now() };
           if (title) metaCache[key] = { title, year:'', poster:null, score:0, type };
         }
         success++;
