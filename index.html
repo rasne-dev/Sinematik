@@ -311,6 +311,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   .type-toggle,.type-toggle .type-btn{flex:1}
   .detail-actions{gap:5px}
   .btn{padding:8px 13px;font-size:12px}
+  .preview-tooltip{display:none!important}
 }
 </style>
 </head>
@@ -376,7 +377,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       <span class="bar-label">Tür:</span>
       <div class="bar-chips" id="recGenreChips"></div>
       <div class="bar-divider"></div>
-      <span class="bar-label">Türü:</span>
+      <span class="bar-label">İçerik:</span>
       <div class="bar-chips">
         <span class="bar-chip active" data-rec-type="" onclick="setRecType(this, '')">Tümü</span>
         <span class="bar-chip" data-rec-type="movie" onclick="setRecType(this, 'movie')">🎬 Film</span>
@@ -452,6 +453,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         onkeydown="if(event.key==='Enter')saveApiKey()">
       <div class="alert alert-err" id="apikeyError" style="display:none">Geçersiz anahtar — lütfen kontrol et.</div>
       <button class="btn btn-purple" onclick="saveApiKey()" style="width:100%;margin-top:4px">Devam Et →</button>
+      <button class="btn btn-ghost" onclick="useDemoKey()" style="width:100%;margin-top:8px;font-size:12px;color:var(--muted)">Demo anahtarıyla dene (sınırlı)</button>
     </div>
   </div>
 </div>
@@ -772,8 +774,18 @@ function clearAll() {
   ratings = {}; watchlist = {}; metaCache = {};
   currentPage = 1;
   saveAll();
+  // Genre cache'ini koru (API'den tekrar çekmemek için)
+  // lsSet('fo_genres', ...) dokunmuyoruz
   closeModal('settingsModal');
   toast('Veriler temizlendi');
+  loadDiscover();
+}
+
+function useDemoKey() {
+  TMDB_KEY = DEFAULT_KEY;
+  lsSet('fo_key', DEFAULT_KEY);
+  closeModal('apikeyModal');
+  toast('Demo anahtarıyla devam ediliyor');
   loadDiscover();
 }
 
@@ -1128,8 +1140,16 @@ async function fetchImdbForCard(id, type, key) {
   }
   
   try {
-    const details = await tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' });
-    const imdbId = details.external_ids?.imdb_id;
+    // imdbId zaten cache'de varsa tekrar TMDB'ye gitme
+    let imdbId = metaCache[key]?.imdbId;
+    if (!imdbId) {
+      const details = await tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' });
+      imdbId = details.external_ids?.imdb_id;
+      if (imdbId) {
+        if (!metaCache[key]) metaCache[key] = {};
+        metaCache[key].imdbId = imdbId;
+      }
+    }
     if (imdbId) {
       const od = await omdb(imdbId);
       if (od?.imdbRating && od.imdbRating !== 'N/A') {
@@ -1262,6 +1282,8 @@ function openDetail(item, type, reason = null) {
 
 function searchCast(name) {
   closeModal('detailModal');
+  // Önce discover sayfasına geç
+  document.querySelector('[data-page="discover"]').click();
   document.getElementById('searchInput').value = name;
   onSearchInput(name);
   doSearch();
@@ -1378,7 +1400,8 @@ function clickD(n) {
   if (pendingRating === n) {
     // Toggle off: if clicking the same star, remove rating
     delete ratings[key];
-    delete metaCache[key];
+    // metaCache'deki başlık/poster gibi kalıcı verileri koru; sadece imdb cache'i temizleme
+    if (metaCache[key]) delete metaCache[key].imdb;
     pendingRating = 0;
     toast('Puan kaldırıldı');
   } else {
@@ -1420,7 +1443,8 @@ function clickD(n) {
 function deleteRatingFromModal(key) {
   if (!confirm('Bu puanı silmek istiyor musun?')) return;
   delete ratings[key];
-  delete metaCache[key];
+  // metaCache poster/başlık verilerini koru
+  if (metaCache[key]) delete metaCache[key].imdb;
   saveAll();
   closeModal('detailModal');
   toast('Puan silindi');
@@ -1431,7 +1455,11 @@ function deleteRatingFromModal(key) {
 function toggleWatch() {
   if (!currentItem) return;
   const { item, type } = currentItem;
-  toggleWatchQuick(`${type}_${item.id}`, item, type);
+  const key = `${type}_${item.id}`;
+  const watchBtn = document.getElementById('watchBtn');
+  toggleWatchQuick(key, item, type, null);
+  // Update detail modal button explicitly
+  if (watchBtn) watchBtn.innerHTML = watchlist[key] ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle';
 }
 
 function toggleWatchQuick(key, item, type, btnEl = null) {
@@ -1550,7 +1578,7 @@ function renderRated() {
   if (!keys.length) {
     const msg = typeFilter === 'all'
       ? '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>'
-      : `<div class="empty"><div class="empty-icon">${typeFilter === 'movie' ? '🎬' : '🎬'}</div><h3>Bu türde puanlanan içerik yok</h3></div>`;
+      : `<div class="empty"><div class="empty-icon">${typeFilter === 'movie' ? '🎬' : '📺'}</div><h3>Bu türde puanlanan içerik yok</h3></div>`;
     list.innerHTML = msg;
     return;
   }
@@ -1625,7 +1653,7 @@ function updateRating(key, n, row) {
 }
 function deleteRating(key) {
   delete ratings[key];
-  delete metaCache[key];
+  if (metaCache[key]) delete metaCache[key].imdb;
   saveAll();
   renderRated();
   toast('Silindi');
@@ -1699,7 +1727,7 @@ async function loadRecommendations() {
   
   const ratedIds = new Set(keys.map(k => k.split('_').slice(1).join('')));
   let topRated = [...keys]
-    .filter(k => ratings[k] >= 7 && !k.includes('_imdb_'));
+    .filter(k => getRatingValue(k) >= 7 && !k.includes('_imdb_'));
   
   if (!topRated.length) {
     cnt.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Daha yüksek puan gerekiyor</h3><p>Öneri alabilmek için en az bir içeriği 7 veya üzeri puanla.</p></div>';
