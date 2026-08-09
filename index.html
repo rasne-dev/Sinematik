@@ -698,7 +698,7 @@ function toast(msg, ms = 2600) {
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
-function esc(s)        { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s)        { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // ESC closes modals
 document.addEventListener('keydown', e => {
@@ -952,7 +952,7 @@ async function loadDiscover(append = false, _retries = 0) {
       params.query = currentSearch;
       const path = currentType === 'all' ? '/search/multi' : `/search/${currentType}`;
       data = await tmdb(path, params, searchController.signal);
-      titleEl.innerHTML = `"${currentSearch}" <small>${data.total_results || 0} sonuç</small>`;
+      titleEl.innerHTML = `"${esc(currentSearch)}" <small>${data.total_results || 0} sonuç</small>`;
     } else {
       if (currentType === 'all') {
         data = await tmdb('/trending/all/day', { page: currentPage }, searchController.signal);
@@ -1058,7 +1058,7 @@ async function loadDiscover(append = false, _retries = 0) {
     if (append) {
       document.getElementById('appendSpinner')?.remove();
     } else {
-      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API hatası: ' + e.message + '</p></div>';
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API hatası: ' + esc(e.message) + '</p></div>';
     }
   }
 }
@@ -1069,6 +1069,11 @@ function loadMore() {
 }
 
 // ══ CARD ══
+// key -> {item, type} eşlemesi: kart verilerini attribute içine gömmek yerine
+// burada tutuyoruz (hem XSS riskini kapatır hem de başlıkta ", ', \ gibi
+// karakterler geçtiğinde inline onclick'in bozulmasını önler).
+const itemStore = new Map();
+
 function makeCard(item, type) {
   const title = item.title || item.name || '—';
   const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
@@ -1076,6 +1081,8 @@ function makeCard(item, type) {
   const myR   = getRatingValue(key);
   const inW   = !!watchlist[key];
   const resolvedType = item.media_type === 'tv' ? 'tv' : type;
+
+  itemStore.set(key, { item, type: resolvedType });
 
   const el       = document.createElement('div');
   el.className   = 'card';
@@ -1092,7 +1099,7 @@ function makeCard(item, type) {
   });
 
   const poster = item.poster_path
-    ? `<img src="${IMG_W}${item.poster_path}" alt="${title}" loading="lazy">`
+    ? `<img src="${IMG_W}${item.poster_path}" alt="${esc(title)}" loading="lazy">`
     : `<div class="card-ph">🎬</div>`;
 
   const scoreBadge = item.vote_average > 0
@@ -1106,7 +1113,7 @@ function makeCard(item, type) {
 
   const quickWatchBtn = `
     <div class="quick-watch ${inW ? 'active' : ''}" 
-      onclick="event.stopPropagation(); toggleWatchQuick('${key}', ${JSON.stringify(item).replace(/"/g, '&quot;')}, '${resolvedType}', this)"
+      onclick="event.stopPropagation(); toggleWatchQuickByKey('${key}', this)"
       title="${inW ? 'İzleme listesinden çıkar' : 'İzleme listesine ekle'}">
       ${inW ? '✓' : '+'}
     </div>
@@ -1185,13 +1192,13 @@ async function showPreview(item, type, el) {
 
   try {
     const details = await tmdb(`/${type}/${item.id}`, { append_to_response: 'credits' });
-    const cast = (details.credits?.cast || []).slice(0,3).map(c => c.name).join(', ');
-    const genres = (details.genres || []).map(g => g.name).join(', ');
+    const cast = (details.credits?.cast || []).slice(0,3).map(c => esc(c.name)).join(', ');
+    const genres = (details.genres || []).map(g => esc(g.name)).join(', ');
 
     tt.innerHTML = `
-      <div class="preview-title">${item.title || item.name}</div>
+      <div class="preview-title">${esc(item.title || item.name)}</div>
       <div class="preview-meta">${genres}</div>
-      <div class="preview-overview">${details.overview || 'Özet yok.'}</div>
+      <div class="preview-overview">${esc(details.overview) || 'Özet yok.'}</div>
       <div class="preview-cast"><strong>Oyuncular:</strong> ${cast || '-'}</div>
     `;
   } catch {
@@ -1258,7 +1265,7 @@ function openDetail(item, type, reason = null) {
         <span id="detailRuntime"></span>
       </div>
       <div class="genre-tags" id="detailGenres"></div>
-      ${item.overview ? `<div class="detail-overview">${item.overview}</div>` : '<div id="detailOverview"></div>'}
+      ${item.overview ? `<div class="detail-overview">${esc(item.overview)}</div>` : '<div id="detailOverview"></div>'}
       <div id="detailCast" class="cast-row"></div>
       <div class="rate-label">
         Puanın (1–10)
@@ -1304,7 +1311,7 @@ async function fetchDetailExtras(id, type) {
       let certification = 'Bilinmiyor';
       if (type === 'movie') {
         const country = releaseDates.results.find(r => r.iso_3166_1 === 'TR') || releaseDates.results.find(r => r.iso_3166_1 === 'US');
-        certification = country?.release_dates[0].certification || 'Bilinmiyor';
+        certification = country?.release_dates?.[0]?.certification || 'Bilinmiyor';
       } else {
          const tvDetails = await tmdb(`/${type}/${id}/content_ratings`);
          const tr = tvDetails.results.find(r => r.iso_3166_1 === 'TR') || tvDetails.results.find(r => r.iso_3166_1 === 'US');
@@ -1328,20 +1335,20 @@ async function fetchDetailExtras(id, type) {
     const genreEl = document.getElementById('detailGenres');
     if (genreEl && details.genres?.length) {
       genreEl.innerHTML = details.genres.slice(0, 5)
-        .map(g => `<span class="genre-tag" data-g="${g.id}">${g.name}</span>`).join('');
+        .map(g => `<span class="genre-tag" data-g="${g.id}">${esc(g.name)}</span>`).join('');
     }
 
     const ovEl = document.getElementById('detailOverview');
-    if (ovEl && details.overview) ovEl.innerHTML = `<div class="detail-overview">${details.overview}</div>`;
+    if (ovEl && details.overview) ovEl.innerHTML = `<div class="detail-overview">${esc(details.overview)}</div>`;
 
     const castEl = document.getElementById('detailCast');
     if (castEl && credits.cast?.length) {
       castEl.innerHTML = credits.cast.slice(0, 8).map(p => `
         <div class="cast-item" onclick="searchCast('${esc(p.name)}')" style="cursor:pointer" title="Diğer işlerini ara">
           ${p.profile_path
-            ? `<img class="cast-img" src="${IMG_FACE}${p.profile_path}" alt="${p.name}" loading="lazy">`
+            ? `<img class="cast-img" src="${IMG_FACE}${p.profile_path}" alt="${esc(p.name)}" loading="lazy">`
             : `<div class="cast-img" style="background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">👤</div>`}
-          <div class="cast-name">${p.name}</div>
+          <div class="cast-name">${esc(p.name)}</div>
         </div>
       `).join('');
     }
@@ -1460,6 +1467,12 @@ function toggleWatch() {
   toggleWatchQuick(key, item, type, null);
   // Update detail modal button explicitly
   if (watchBtn) watchBtn.innerHTML = watchlist[key] ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle';
+}
+
+function toggleWatchQuickByKey(key, btnEl = null) {
+  const rec = itemStore.get(key);
+  if (!rec) return;
+  toggleWatchQuick(key, rec.item, rec.type, btnEl);
 }
 
 function toggleWatchQuick(key, item, type, btnEl = null) {
@@ -1619,7 +1632,7 @@ function renderRated() {
     el.innerHTML = `
       ${thumb}
       <div class="rated-info">
-        <div class="rated-name" title="${meta.title || key}">${meta.title || key}</div>
+        <div class="rated-name" title="${esc(meta.title || key)}">${esc(meta.title || key)}</div>
         <div class="rated-sub">
           <span class="rated-type-pill">${type === 'tv' ? '📺 Dizi' : '🎬 Film'}</span>
           ${meta.year ? `<span>${meta.year}</span>` : ''}
@@ -1871,7 +1884,7 @@ async function handleFile(file) {
       const rating  = parseInt(row[ratIdx]);
       const title   = row[titIdx]?.trim() || '';
       const typeRaw = (row[typIdx] || '').trim();
-      if (!imdbId || isNaN(rating)) { done++; fail++; return; }
+      if (!imdbId || isNaN(rating) || rating < 1 || rating > 10) { done++; fail++; return; }
       const type = imdbTypeToTmdb(typeRaw);
       try {
         const found = await fetch(
@@ -1946,9 +1959,9 @@ function downloadFile(filename, content, type) {
 }
 
 function exportData() {
+  // Güvenlik: TMDB/OMDb API anahtarları kasıtlı olarak dışa aktarılmıyor.
+  // Kullanıcı bu yedek dosyasını başkasıyla paylaşırsa anahtarları sızmasın diye.
   const data = {
-    TMDB_KEY,
-    OMDB_KEY,
     ratings,
     watchlist,
     metaCache,
@@ -1958,7 +1971,7 @@ function exportData() {
   };
   const filename = `sinematik_yedek_${new Date().toISOString().slice(0,10)}.json`;
   downloadFile(filename, JSON.stringify(data, null, 2), 'application/json');
-  toast('Yedekleme dosyası indirildi!');
+  toast('Yedekleme dosyası indirildi! (API anahtarların güvenliğin için dahil edilmedi)');
 }
 
 function importData(file) {
@@ -1967,14 +1980,13 @@ function importData(file) {
   reader.onload = async (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      
+      if (typeof data !== 'object' || data === null) throw new Error('Geçersiz yedek dosyası');
+
       if (!confirm('Mevcut tüm verileriniz silinip yedekleme dosyası yüklenecek. Emin misiniz?')) return;
 
-      TMDB_KEY  = data.TMDB_KEY  || TMDB_KEY;
-      OMDB_KEY  = data.OMDB_KEY  || '';
-      ratings   = data.ratings   || {};
-      watchlist = data.watchlist || {};
-      metaCache = data.metaCache || {};
+      ratings   = (data.ratings   && typeof data.ratings   === 'object') ? data.ratings   : {};
+      watchlist = (data.watchlist && typeof data.watchlist === 'object') ? data.watchlist : {};
+      metaCache = (data.metaCache && typeof data.metaCache === 'object') ? data.metaCache : {};
       nsfwFilter = data.nsfwFilter ?? nsfwFilter;
       ageFilter = data.ageFilter ?? ageFilter;
       if (data.cookies_accepted) lsSet('cookies_accepted', data.cookies_accepted);
