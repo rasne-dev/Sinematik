@@ -1928,7 +1928,7 @@ let recDiscoveredTrPage = 1;
 let recDiscoveredGeneralPage = 1;
 let userTopGenreIds   = [];
 
-function setRecGenre(el, genreId) {
+async function setRecGenre(el, genreId) {
   if (genreId === '') {
     recSelectedGenres = [];
     document.querySelectorAll('#recGenreChips .bar-chip').forEach(c => c.classList.remove('active'));
@@ -1950,7 +1950,7 @@ function setRecGenre(el, genreId) {
   }
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations(false);
-  setTimeout(checkAndAutoLoadRecs, 150);
+  await ensureRecBuffer();
 }
 
 async function setRecType(el, type) {
@@ -1960,16 +1960,10 @@ async function setRecType(el, type) {
   displayedRecsCount = RECS_PER_PAGE;
 
   if (type === 'tr') {
-    const trCount = allRecommendations.filter(i => i.original_language === 'tr' || (i.origin_country && i.origin_country.includes('TR'))).length;
-    if (trCount < 16) {
-      const cnt = document.getElementById('recContent');
-      cnt.innerHTML = '<div class="loading"><div class="spinner"></div>🇹🇷 Sana özel Türk yapımları getiriliyor...</div>';
-      await fetchTurkishRecommendations();
-      await updateRecGenreChips();
-    }
+    recDiscoveredTrPage = 1;
   }
   renderRecommendations(false);
-  setTimeout(checkAndAutoLoadRecs, 150);
+  await ensureRecBuffer();
 }
 
 function setRecSort(el, mode) {
@@ -1978,14 +1972,19 @@ function setRecSort(el, mode) {
   recSortMode = mode;
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations(false);
-  setTimeout(checkAndAutoLoadRecs, 150);
+  ensureRecBuffer();
 }
 
-function applyRecFilters() {
-  recMinRating = parseFloat(document.getElementById('recMinRating').value) || 0;
+async function applyRecFilters() {
+  const newVal = parseFloat(document.getElementById('recMinRating').value) || 0;
+  if (newVal !== recMinRating) {
+    recMinRating = newVal;
+    recDiscoveredTrPage = 1;
+    recDiscoveredGeneralPage = 1;
+  }
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations(false);
-  setTimeout(checkAndAutoLoadRecs, 150);
+  await ensureRecBuffer();
 }
 
 function getFilteredRecommendations() {
@@ -2095,9 +2094,12 @@ async function fetchRecommendationsFromSeeds(count = 3) {
         page: recDiscoveredGeneralPage++,
         with_genres: userTopGenreIds.slice(0, 2).join(','),
         sort_by: 'vote_average.desc',
-        'vote_count.gte': 150,
+        'vote_count.gte': 100,
         include_adult: !nsfwFilter
       };
+      if (recMinRating > 0) {
+        gParams['vote_average.gte'] = recMinRating;
+      }
       const [mRes, tRes] = await Promise.all([
         tmdb('/discover/movie', gParams).catch(() => ({ results: [] })),
         tmdb('/discover/tv', gParams).catch(() => ({ results: [] }))
@@ -2138,22 +2140,28 @@ async function fetchTurkishRecommendations() {
   let newItems = [];
   try {
     const page = recDiscoveredTrPage++;
+    const sort = (recSortMode === 'rating' || recMinRating > 0) ? 'vote_average.desc' : (page % 2 === 1 ? 'popularity.desc' : 'vote_average.desc');
     const movieParams = {
       page,
       with_original_language: 'tr',
-      sort_by: page % 2 === 1 ? 'popularity.desc' : 'vote_average.desc',
+      sort_by: sort,
       'vote_count.gte': 10,
       include_adult: !nsfwFilter
     };
     const tvParams = {
       page,
       with_original_language: 'tr',
-      sort_by: page % 2 === 1 ? 'popularity.desc' : 'vote_average.desc',
+      sort_by: sort,
       'vote_count.gte': 10,
       include_adult: !nsfwFilter
     };
 
-    if (userTopGenreIds.length > 0 && page % 2 === 0) {
+    if (recMinRating > 0) {
+      movieParams['vote_average.gte'] = recMinRating;
+      tvParams['vote_average.gte'] = recMinRating;
+    }
+
+    if (userTopGenreIds.length > 0 && page % 2 === 0 && recMinRating === 0) {
       movieParams.with_genres = userTopGenreIds[0];
       tvParams.with_genres = userTopGenreIds[0];
     }
@@ -2186,6 +2194,43 @@ async function fetchTurkishRecommendations() {
   return newItems.length;
 }
 
+async function ensureRecBuffer() {
+  if (activePage !== 'recommendations' || isLoadingRecs) return;
+  let filtered = getFilteredRecommendations();
+  if (filtered.length >= 16) return;
+
+  const indicator = document.getElementById('recLoadingIndicator');
+  if (indicator) indicator.style.display = 'block';
+
+  let attempts = 0;
+  while (filtered.length < 16 && attempts < 6) {
+    attempts++;
+    let fetched = 0;
+    if (recTypeFilter === 'tr') {
+      if (recDiscoveredTrPage > 25) break;
+      fetched = await fetchTurkishRecommendations();
+    } else {
+      if (recSeedIndex < recSeeds.length) {
+        fetched = await fetchRecommendationsFromSeeds(3);
+      } else if (recDiscoveredGeneralPage <= 15) {
+        fetched = await fetchRecommendationsFromSeeds(0);
+      } else if (recDiscoveredTrPage <= 15) {
+        fetched = await fetchTurkishRecommendations();
+      } else {
+        break;
+      }
+    }
+    await updateRecGenreChips();
+    filtered = getFilteredRecommendations();
+    if (fetched === 0) break;
+  }
+
+  if (indicator) indicator.style.display = 'none';
+  displayedRecsCount = Math.max(displayedRecsCount, Math.min(RECS_PER_PAGE, filtered.length));
+  renderRecommendations(false);
+  updateRecLoadMoreBtn();
+}
+
 function checkAndAutoLoadRecs() {
   if (activePage !== 'recommendations') return;
   const filtered = getFilteredRecommendations();
@@ -2194,6 +2239,8 @@ function checkAndAutoLoadRecs() {
     displayedRecsCount = Math.min(displayedRecsCount + RECS_PER_PAGE, filtered.length);
     renderRecommendations(true);
     setTimeout(checkAndAutoLoadRecs, 150);
+  } else if (filtered.length < 12 && !isLoadingRecs) {
+    ensureRecBuffer();
   }
   updateRecLoadMoreBtn();
 }
@@ -2202,7 +2249,7 @@ function updateRecLoadMoreBtn() {
   const btn = document.getElementById('recLoadMoreBtn');
   if (!btn) return;
   const filtered = getFilteredRecommendations();
-  const hasMore = displayedRecsCount < filtered.length || recSeedIndex < recSeeds.length || recDiscoveredTrPage < 25;
+  const hasMore = displayedRecsCount < filtered.length || recSeedIndex < recSeeds.length || recDiscoveredTrPage < 25 || recDiscoveredGeneralPage < 15;
   btn.classList.toggle('visible', hasMore && !isLoadingRecs);
 }
 
@@ -2297,6 +2344,8 @@ async function loadMoreRecommendations() {
         }
       }
       await updateRecGenreChips();
+      const newFiltered = getFilteredRecommendations();
+      displayedRecsCount = Math.min(displayedRecsCount + RECS_PER_PAGE, newFiltered.length);
       renderRecommendations(true);
     } catch (e) {
       console.warn("loadMoreRecommendations error:", e);
