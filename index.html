@@ -231,6 +231,31 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .quick-watch:hover { background: var(--accent2); border-color: var(--accent2); }
 .quick-watch.active { background: var(--accent2); border-color: var(--accent2); opacity: 1; }
 
+.quick-dismiss {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(16,16,26,0.75);
+  backdrop-filter: blur(6px);
+  color: #bbb;
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: all .2s;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 6;
+}
+@media(hover:hover){ .card:hover .quick-dismiss { opacity: 1; } }
+@media(max-width:640px){ .quick-dismiss { opacity: 0.85; } }
+.quick-dismiss:hover { background: var(--danger); color: #fff; border-color: var(--danger); transform: scale(1.1); }
+
 /* GENRE HIERARCHY */
 .genre-tag[data-g="28"], .genre-tag[data-g="10759"] { background: rgba(224,85,85,0.1); color: #e05555; border-color: rgba(224,85,85,0.2); } /* Action */
 .genre-tag[data-g="35"] { background: rgba(85,196,135,0.1); color: #55c487; border-color: rgba(85,196,135,0.2); } /* Comedy */
@@ -528,6 +553,14 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
       </div>
 
       <div class="settings-section" style="border-top:1px solid var(--border);padding-top:16px">
+        <div class="settings-label">Gizlenen Öneriler</div>
+        <div class="apikey-hint" id="dismissedCountText">
+          İlgilenmiyorum dediğiniz içerikler burada tutulur ve tekrar önerilmez.
+        </div>
+        <button class="btn btn-ghost" onclick="resetDismissed()" style="width:100%">
+          Gizlenenleri Temizle (Yeniden Öner)
+        </button>
+      </div>
         <div class="settings-label" style="color:var(--danger)">Tehlikeli Bölge</div>
         <button class="btn btn-ghost" onclick="clearAll()"
           style="border-color:var(--danger);color:var(--danger);width:100%">Tüm Verileri Sıfırla</button>
@@ -591,9 +624,10 @@ function ls(k)          { return localStorage.getItem(k); }
 function lsSet(k, v)    { localStorage.setItem(k, v); }
 function lsJSON(k, def) { try { return JSON.parse(ls(k)) || def; } catch { return def; } }
 function saveAll() {
-  lsSet('fo_ratings', JSON.stringify(ratings));
-  lsSet('fo_watch',   JSON.stringify(watchlist));
-  lsSet('fo_meta',    JSON.stringify(metaCache));
+  lsSet('fo_ratings',   JSON.stringify(ratings));
+  lsSet('fo_watch',     JSON.stringify(watchlist));
+  lsSet('fo_meta',      JSON.stringify(metaCache));
+  lsSet('fo_dismissed', JSON.stringify(dismissed));
 }
 
 // ══ INIT APP ══
@@ -690,6 +724,7 @@ let OMDB_KEY  = ls('fo_omdb')   || '';
 let ratings   = lsJSON('fo_ratings', {});
 let watchlist = lsJSON('fo_watch',   {});
 let metaCache = lsJSON('fo_meta',    {});
+let dismissed = lsJSON('fo_dismissed', {});
 
 // Ratings veri migrasyonu: eski sayı formatındaki veya tarihi eksik kayıtları düzelt
 let ratingsMigrated = false;
@@ -793,7 +828,22 @@ function openSettings() {
   document.getElementById('omdbKeyInput').value     = OMDB_KEY;
   document.getElementById('nsfwFilter').checked     = nsfwFilter;
   document.getElementById('ageFilter').value        = ageFilter;
+  const dCount = Object.keys(dismissed).length;
+  const countEl = document.getElementById('dismissedCountText');
+  if (countEl) {
+    countEl.textContent = dCount > 0 
+      ? `${dCount} adet içerik önerilerden gizlendi. Tekrar önerilmesini istersen sıfırlayabilirsin.`
+      : 'Henüz gizlenen içerik yok.';
+  }
   openModal('settingsModal');
+}
+
+function resetDismissed() {
+  dismissed = {};
+  saveAll();
+  toast('✓ Gizlenen öneriler sıfırlandı');
+  openSettings();
+  if (activePage === 'recommendations') loadRecommendations();
 }
 
 async function updateApiKey() {
@@ -831,7 +881,7 @@ function saveFilters() {
 
 function clearAll() {
   if (!confirm('Tüm puanlar, izle listesi ve önbellek silinecek. Emin misin?')) return;
-  ratings = {}; watchlist = {}; metaCache = {};
+  ratings = {}; watchlist = {}; metaCache = {}; dismissed = {};
   currentPage = 1;
   saveAll();
   // Genre cache'ini koru (API'den tekrar çekmemek için)
@@ -1212,9 +1262,15 @@ function makeCard(item, type, reason = null) {
     </div>
   `;
 
+  const quickDismissBtn = `
+    <div class="quick-dismiss" 
+      onclick="event.stopPropagation(); dismissRecommendation('${key}', this)"
+      title="İlgimi çekmiyor / Bu öneriyi gizle">✕</div>
+  `;
+
   el.innerHTML = `
     ${poster}
-    ${scoreBadge}${imdbBadge}${userBadge}${watchBadge}${typeBadge}${quickWatchBtn}
+    ${scoreBadge}${imdbBadge}${userBadge}${watchBadge}${typeBadge}${quickWatchBtn}${quickDismissBtn}
     <div class="card-body">
       <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
@@ -1369,6 +1425,9 @@ function openDetail(item, type, reason = null) {
       <div class="detail-actions">
         <button class="btn btn-gold" id="watchBtn" onclick="toggleWatch()">
           ${inW ? '🕐 Listeden Çıkar' : '+ İzleme Listesine Ekle'}
+        </button>
+        <button class="btn btn-ghost" onclick="dismissFromModal('${key}')" title="Bu yapımı önerilerden kalıcı olarak gizle">
+          🚫 İlgilenmiyorum
         </button>
         <a id="imdbLink" class="btn btn-imdb" href="https://www.imdb.com/find?q=${encodeURIComponent(title + ' ' + year)}" target="_blank">
           <span style="font-weight:800;font-size:11px">IMDb</span>'de Ara ↗
@@ -1614,6 +1673,33 @@ function toggleWatchQuick(key, item, type, btnEl = null) {
         card.insertBefore(badge, card.querySelector('.card-body'));
     }
   }
+}
+
+function dismissRecommendation(key, btnEl = null) {
+  dismissed[key] = Date.now();
+  const parts = key.split('_');
+  const id = parts.slice(1).join('_');
+  dismissed[`movie_${id}`] = Date.now();
+  dismissed[`tv_${id}`] = Date.now();
+  saveAll();
+
+  // Find card in DOM and remove with smooth animation
+  const card = btnEl ? btnEl.closest('.card') : document.querySelector(`.card[data-key="${key}"]`);
+  if (card) {
+    card.style.transition = 'all 0.25s ease';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.8)';
+    setTimeout(() => {
+      card.remove();
+      if (activePage === 'recommendations') checkAndAutoLoadRecs();
+    }, 250);
+  }
+  toast('🚫 İçerik önerilerden gizlendi');
+}
+
+function dismissFromModal(key) {
+  dismissRecommendation(key, null);
+  closeModal('detailModal');
 }
 
 function renderWatchlist() {
@@ -1864,6 +1950,10 @@ function applyRecFilters() {
 
 function getFilteredRecommendations() {
   let filtered = allRecommendations;
+  filtered = filtered.filter(i => {
+    const k = `${i._type}_${i.id}`;
+    return !dismissed[k] && !dismissed[`movie_${i.id}`] && !dismissed[`tv_${i.id}`];
+  });
   if (recSelectedGenres.length > 0) {
     filtered = filtered.filter(i => i.genre_ids && recSelectedGenres.some(gid => i.genre_ids.includes(gid)));
   }
@@ -1909,6 +1999,8 @@ async function fetchRecommendationsFromSeeds(count = 3) {
   const ratedIds = new Set(ratedKeys.map(k => k.split('_').slice(1).join('')));
   const watchKeys = Object.keys(watchlist);
   const watchIds = new Set(watchKeys.map(k => k.split('_').slice(1).join('')));
+  const dismissedKeys = Object.keys(dismissed);
+  const dismissedIds = new Set(dismissedKeys.map(k => k.split('_').slice(1).join('')));
   const existingRecIds = new Set(allRecommendations.map(i => i.id));
 
   const sixMonthsLater = new Date();
@@ -1934,7 +2026,7 @@ async function fetchRecommendationsFromSeeds(count = 3) {
 
       const candidates = [...(recData.results || []), ...(simData.results || [])];
       for (const r of candidates) {
-        if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id))) continue;
+        if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id)) || dismissedIds.has(String(r.id)) || dismissed[`${type}_${r.id}`]) continue;
         if (!r.poster_path) continue;
 
         const isTr = r.original_language === 'tr' || (r.origin_country && r.origin_country.includes('TR'));
@@ -1975,7 +2067,7 @@ async function fetchRecommendationsFromSeeds(count = 3) {
         ...(tRes.results || []).map(i => ({ ...i, _type: 'tv' }))
       ];
       for (const r of genreCandidates) {
-        if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id))) continue;
+        if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id)) || dismissedIds.has(String(r.id)) || dismissed[`${r._type}_${r.id}`]) continue;
         if (!r.poster_path) continue;
         existingRecIds.add(r.id);
         newItems.push({
@@ -1999,6 +2091,8 @@ async function fetchTurkishRecommendations() {
   const ratedIds = new Set(ratedKeys.map(k => k.split('_').slice(1).join('')));
   const watchKeys = Object.keys(watchlist);
   const watchIds = new Set(watchKeys.map(k => k.split('_').slice(1).join('')));
+  const dismissedKeys = Object.keys(dismissed);
+  const dismissedIds = new Set(dismissedKeys.map(k => k.split('_').slice(1).join('')));
   const existingRecIds = new Set(allRecommendations.map(i => i.id));
 
   let newItems = [];
@@ -2035,7 +2129,7 @@ async function fetchTurkishRecommendations() {
     ];
 
     for (const r of candidates) {
-      if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id))) continue;
+      if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id)) || dismissedIds.has(String(r.id)) || dismissed[`${r._type}_${r.id}`]) continue;
       if (!r.poster_path) continue;
       existingRecIds.add(r.id);
       newItems.push({
@@ -2351,6 +2445,7 @@ function exportData() {
     ratings,
     watchlist,
     metaCache,
+    dismissed,
     nsfwFilter,
     ageFilter,
     cookies_accepted: ls('cookies_accepted')
@@ -2373,6 +2468,7 @@ function importData(file) {
       ratings   = (data.ratings   && typeof data.ratings   === 'object') ? data.ratings   : {};
       watchlist = (data.watchlist && typeof data.watchlist === 'object') ? data.watchlist : {};
       metaCache = (data.metaCache && typeof data.metaCache === 'object') ? data.metaCache : {};
+      dismissed = (data.dismissed && typeof data.dismissed === 'object') ? data.dismissed : {};
       nsfwFilter = data.nsfwFilter ?? nsfwFilter;
       ageFilter = data.ageFilter ?? ageFilter;
       if (data.cookies_accepted) lsSet('cookies_accepted', data.cookies_accepted);
