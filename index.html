@@ -398,7 +398,15 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
     </div>
     
     <div id="recContent"></div>
-    <div id="recScrollTrigger" style="height: 20px;"></div>
+    <div class="load-more-wrap" style="text-align:center; padding: 24px 0 40px;">
+      <button id="recLoadMoreBtn" class="load-more-btn" onclick="loadMoreRecommendations()">
+        Daha Fazla Öneri Yükle
+      </button>
+      <div id="recLoadingIndicator" class="loading" style="display:none; padding:12px 0;">
+        <div class="spinner"></div> Yeni öneriler yükleniyor...
+      </div>
+      <div id="recScrollTrigger" style="height: 30px; margin-top: 10px;"></div>
+    </div>
   </div>
 
   <!-- İZLE LİSTESİ -->
@@ -595,12 +603,26 @@ document.addEventListener('DOMContentLoaded', () => {
     setupInfiniteScroll();
     if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
     
-    // Back to top scroll listener
+    // Scroll listener: back-to-top & infinite scroll fallback for all pages
     window.addEventListener('scroll', () => {
       const btn = document.getElementById('backToTop');
-      if (window.scrollY > 500) btn.classList.add('show');
-      else btn.classList.remove('show');
-    });
+      if (btn) {
+        if (window.scrollY > 500) btn.classList.add('show');
+        else btn.classList.remove('show');
+      }
+
+      const scrollBottom = window.innerHeight + window.scrollY;
+      const threshold = document.documentElement.scrollHeight - 600;
+      if (scrollBottom >= threshold) {
+        if (activePage === 'recommendations') {
+          loadMoreRecommendations();
+        } else if (activePage === 'discover') {
+          if (!isLoadingDiscover && currentPage < totalPages) {
+            loadMore();
+          }
+        }
+      }
+    }, { passive: true });
 });
 
 // ══ COOKIES ══
@@ -627,13 +649,19 @@ const observer = new IntersectionObserver((entries) => {
       }
     }
   });
-}, { rootMargin: '350px', threshold: 0 });
+}, { rootMargin: '500px', threshold: 0 });
 
 function setupInfiniteScroll() {
   const t1 = document.getElementById('scrollTrigger');
-  if (t1) observer.observe(t1);
+  if (t1) {
+    observer.unobserve(t1);
+    observer.observe(t1);
+  }
   const t2 = document.getElementById('recScrollTrigger');
-  if (t2) observer.observe(t2);
+  if (t2) {
+    observer.unobserve(t2);
+    observer.observe(t2);
+  }
 }
 
 // ══ CACHE ══
@@ -1766,7 +1794,7 @@ let recMinRating      = 0;
 let recSortMode       = 'popularity';
 let allRecommendations = [];
 let displayedRecsCount = 0;
-const RECS_PER_PAGE   = 12;
+const RECS_PER_PAGE   = 24;
 let isLoadingRecs     = false;
 let recSeeds          = [];
 let recSeedIndex      = 0;
@@ -1796,6 +1824,7 @@ function setRecGenre(el, genreId) {
   }
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations(false);
+  setTimeout(checkAndAutoLoadRecs, 150);
 }
 
 async function setRecType(el, type) {
@@ -1806,7 +1835,7 @@ async function setRecType(el, type) {
 
   if (type === 'tr') {
     const trCount = allRecommendations.filter(i => i.original_language === 'tr' || (i.origin_country && i.origin_country.includes('TR'))).length;
-    if (trCount < 12) {
+    if (trCount < 16) {
       const cnt = document.getElementById('recContent');
       cnt.innerHTML = '<div class="loading"><div class="spinner"></div>🇹🇷 Sana özel Türk yapımları getiriliyor...</div>';
       await fetchTurkishRecommendations();
@@ -1814,6 +1843,7 @@ async function setRecType(el, type) {
     }
   }
   renderRecommendations(false);
+  setTimeout(checkAndAutoLoadRecs, 150);
 }
 
 function setRecSort(el, mode) {
@@ -1822,12 +1852,14 @@ function setRecSort(el, mode) {
   recSortMode = mode;
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations(false);
+  setTimeout(checkAndAutoLoadRecs, 150);
 }
 
 function applyRecFilters() {
   recMinRating = parseFloat(document.getElementById('recMinRating').value) || 0;
   displayedRecsCount = RECS_PER_PAGE;
   renderRecommendations(false);
+  setTimeout(checkAndAutoLoadRecs, 150);
 }
 
 function getFilteredRecommendations() {
@@ -2020,18 +2052,41 @@ async function fetchTurkishRecommendations() {
   return newItems.length;
 }
 
+function checkAndAutoLoadRecs() {
+  if (activePage !== 'recommendations') return;
+  const filtered = getFilteredRecommendations();
+  // If page doesn't have sufficient scrollable height (less than viewport + 250px), load more!
+  if (displayedRecsCount < filtered.length && document.documentElement.scrollHeight <= window.innerHeight + 250) {
+    displayedRecsCount = Math.min(displayedRecsCount + RECS_PER_PAGE, filtered.length);
+    renderRecommendations(true);
+    setTimeout(checkAndAutoLoadRecs, 150);
+  }
+  updateRecLoadMoreBtn();
+}
+
+function updateRecLoadMoreBtn() {
+  const btn = document.getElementById('recLoadMoreBtn');
+  if (!btn) return;
+  const filtered = getFilteredRecommendations();
+  const hasMore = displayedRecsCount < filtered.length || recSeedIndex < recSeeds.length || recDiscoveredTrPage < 25;
+  btn.classList.toggle('visible', hasMore && !isLoadingRecs);
+}
+
 async function loadRecommendations() {
   const cnt  = document.getElementById('recContent');
+  const btn  = document.getElementById('recLoadMoreBtn');
   const keys = Object.keys(ratings);
 
   if (keys.length < 3) {
     cnt.innerHTML = '<div class="empty"><div class="empty-icon">🎬</div><h3>Öneri için içerik puanla</h3><p>En az 3 film veya dizi puanladıktan sonra kişisel öneriler burada görünür.</p></div>';
+    if (btn) btn.classList.remove('visible');
     return;
   }
 
   const eligibleSeeds = keys.filter(k => getRatingValue(k) >= 7 && !k.includes('_imdb_'));
   if (!eligibleSeeds.length) {
     cnt.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Daha yüksek puan gerekiyor</h3><p>Öneri alabilmek için en az bir içeriği 7 veya üzeri puanla.</p></div>';
+    if (btn) btn.classList.remove('visible');
     return;
   }
 
@@ -2067,40 +2122,57 @@ async function loadRecommendations() {
     .sort((a, b) => b[1] - a[1])
     .map(e => e[0]);
 
-  // Initial fetch: 4 seeds + 1 Turkish batch
-  await fetchRecommendationsFromSeeds(4);
+  // Initial fetch: 5 seeds + 1 Turkish batch
+  await fetchRecommendationsFromSeeds(5);
   await fetchTurkishRecommendations();
 
   await updateRecGenreChips();
   renderRecommendations(false);
+
+  // Setup/refresh observer and guarantee scrollability
+  setupInfiniteScroll();
+  setTimeout(checkAndAutoLoadRecs, 150);
 }
 
 async function loadMoreRecommendations() {
-  if (isLoadingRecs || activePage !== 'recommendations') return;
+  if (activePage !== 'recommendations') return;
+  if (isLoadingRecs) return;
 
   const filtered = getFilteredRecommendations();
   
+  // Render next batch from memory immediately
   if (displayedRecsCount < filtered.length) {
     displayedRecsCount = Math.min(displayedRecsCount + RECS_PER_PAGE, filtered.length);
-    renderRecommendations(true); // Smooth append
+    renderRecommendations(true);
   }
 
-  // If buffer is running low, fetch more items in background!
-  if (displayedRecsCount >= filtered.length - 6) {
-    let added = 0;
-    if (recTypeFilter === 'tr') {
-      added = await fetchTurkishRecommendations();
-    } else {
-      if (recSeedIndex < recSeeds.length) {
-        added = await fetchRecommendationsFromSeeds(3);
+  // If buffer is running low, fetch more items from TMDB in background
+  if (displayedRecsCount >= filtered.length - 12) {
+    isLoadingRecs = true;
+    const indicator = document.getElementById('recLoadingIndicator');
+    if (indicator) indicator.style.display = 'block';
+
+    try {
+      if (recTypeFilter === 'tr') {
+        await fetchTurkishRecommendations();
       } else {
-        added = await fetchRecommendationsFromSeeds(0);
+        if (recSeedIndex < recSeeds.length) {
+          await fetchRecommendationsFromSeeds(3);
+        } else {
+          await fetchRecommendationsFromSeeds(0);
+        }
       }
-    }
-    if (added > 0) {
       await updateRecGenreChips();
       renderRecommendations(true);
+    } catch (e) {
+      console.warn("loadMoreRecommendations error:", e);
+    } finally {
+      isLoadingRecs = false;
+      if (indicator) indicator.style.display = 'none';
+      updateRecLoadMoreBtn();
     }
+  } else {
+    updateRecLoadMoreBtn();
   }
 }
 
@@ -2113,6 +2185,7 @@ function renderRecommendations(appendOnly = false) {
       cnt.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><h3>Sonuç bulunamadı</h3><p>Farklı bir filtre seçebilir veya Keşfet sekmesinden yeni içerikler puanlayabilirsin.</p></div>';
       cnt.style.opacity = '1';
     }
+    updateRecLoadMoreBtn();
     return;
   }
 
@@ -2136,6 +2209,7 @@ function renderRecommendations(appendOnly = false) {
   });
 
   cnt.style.opacity = '1';
+  updateRecLoadMoreBtn();
 }
 
 // ══ IMPORT ══
