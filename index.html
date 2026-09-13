@@ -904,7 +904,13 @@ function updateOmdbKey() {
   OMDB_KEY  = key;
   lsSet('fo_omdb', key);
   closeModal('settingsModal');
-  toast(key ? '✓ OMDb anahtarı kaydedildi — IMDb puanları aktif' : 'OMDb anahtarı temizlendi');
+  toast(key ? '✓ OMDb anahtarı kaydedildi — IMDb puanları öncelikli yapıldı' : 'OMDb anahtarı temizlendi — TMDB puanına dönüldü');
+  if (activePage === 'recommendations') {
+    renderRecommendations(false);
+    ensureRecBuffer();
+  }
+  if (activePage === 'rated') renderRated();
+  if (activePage === 'discover') loadDiscover();
 }
 
 function saveFilters() {
@@ -1256,6 +1262,30 @@ function loadMore() {
 // karakterler geçtiğinde inline onclick'in bozulmasını önler).
 const itemStore = new Map();
 
+function getItemScoreInfo(item, type = null) {
+  const itemType = type || item._type || item.media_type || 'movie';
+  const key = `${itemType}_${item.id}`;
+  const imdbVal = metaCache[key]?.imdb;
+  const imdbNum = parseFloat(imdbVal);
+
+  if (OMDB_KEY && !isNaN(imdbNum) && imdbNum > 0) {
+    return {
+      score: imdbNum,
+      formatted: imdbNum.toFixed(1),
+      source: 'IMDb',
+      isImdb: true
+    };
+  }
+
+  const tmdbScore = typeof item.vote_average === 'number' ? item.vote_average : 0;
+  return {
+    score: tmdbScore,
+    formatted: tmdbScore > 0 ? tmdbScore.toFixed(1) : '—',
+    source: 'TMDB',
+    isImdb: false
+  };
+}
+
 function makeCard(item, type, reason = null) {
   const title = item.title || item.name || '—';
   const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
@@ -1285,8 +1315,13 @@ function makeCard(item, type, reason = null) {
     ? `<img src="${IMG_W}${item.poster_path}" alt="${esc(title)}" loading="lazy">`
     : `<div class="card-ph">🎬</div>`;
 
-  const scoreBadge = item.vote_average > 0
-    ? `<div class="badge" title="TMDB (The Movie Database) Puanı"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
+  const scoreInfo = getItemScoreInfo(item, resolvedType);
+  const scoreBadge = scoreInfo.score > 0
+    ? (scoreInfo.isImdb 
+        ? `<div class="badge" title="IMDb Puanı" style="color:var(--imdb)"><span style="background:var(--imdb);color:#000;padding:1px 3px;border-radius:2px;font-weight:800;font-size:9px">IMDb</span> ${scoreInfo.formatted}</div>`
+        : `<div class="badge" title="TMDB (The Movie Database) Puanı"><span class="badge-tmdb">TMDB</span>${scoreInfo.formatted}</div>`)
+    : '';
+
   const imdbBadge = `<div class="badge-imdb-card" id="imdb-card-${key}"></div>`;
   const userBadge = myR ? `<div class="badge-u">★ ${myR}</div>` : '';
   const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
@@ -1314,7 +1349,7 @@ function makeCard(item, type, reason = null) {
     <div class="card-body">
       <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
-        <span class="card-score" title="TMDB (The Movie Database) Puanı">⭐ ${item.vote_average > 0 ? item.vote_average.toFixed(1) : '—'} <small style="font-size:9px;color:var(--muted);font-weight:400">TMDB</small></span>
+        <span class="card-score" title="${scoreInfo.source} Puanı">⭐ ${scoreInfo.formatted} <small style="font-size:9px;color:${scoreInfo.isImdb ? 'var(--imdb)' : 'var(--muted)'};font-weight:${scoreInfo.isImdb ? '700' : '400'}">${scoreInfo.source}</small></span>
         <span>${year || '—'}</span>
       </div>
     </div>
@@ -1336,7 +1371,6 @@ async function fetchImdbForCard(id, type, key) {
   }
   
   try {
-    // imdbId zaten cache'de varsa tekrar TMDB'ye gitme
     let imdbId = metaCache[key]?.imdbId;
     if (!imdbId) {
       const details = await tmdb(`/${type}/${id}`, { append_to_response: 'external_ids' });
@@ -1359,10 +1393,19 @@ async function fetchImdbForCard(id, type, key) {
 }
 
 function updateImdbBadge(key, rating) {
-  const el = document.getElementById(`imdb-card-${key}`);
-  if (el) {
-    el.textContent = `IMDb ${rating}`;
-    el.classList.add('show');
+  const card = document.querySelector(`.card[data-key="${key}"]`);
+  if (card) {
+    const badge = card.querySelector('.badge');
+    if (badge && OMDB_KEY) {
+      badge.innerHTML = `<span style="background:var(--imdb);color:#000;padding:1px 3px;border-radius:2px;font-weight:800;font-size:9px">IMDb</span> ${rating}`;
+      badge.title = `IMDb Puanı: ${rating}`;
+      badge.style.color = 'var(--imdb)';
+    }
+    const scoreEl = card.querySelector('.card-score');
+    if (scoreEl && OMDB_KEY) {
+      scoreEl.innerHTML = `⭐ ${rating} <small style="font-size:9px;color:var(--imdb);font-weight:700">IMDb</small>`;
+      scoreEl.title = `IMDb Puanı: ${rating}`;
+    }
   }
 }
 
@@ -1440,6 +1483,11 @@ function openDetail(item, type, reason = null) {
       <div class="detail-title">${esc(title)}</div>
       ${reason ? `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">★ ${esc(reason)}</div>` : ''}
       <div class="detail-scores" id="detailScores">
+        ${(OMDB_KEY && metaCache[key]?.imdb)
+          ? `<a class="score-pill score-imdb" href="https://www.imdb.com/title/${metaCache[key].imdbId || ''}/" target="_blank" style="text-decoration:none" title="Gerçek IMDb puanı (IMDb'de aç)">
+               <span class="score-label">IMDb</span>
+               <span class="score-val">⭐ ${metaCache[key].imdb}</span>
+             </a>` : ''}
         ${item.vote_average > 0
           ? `<div class="score-pill score-tmdb" title="TMDB (The Movie Database) Kullanıcı Puanı">
                <span class="score-label">TMDB</span>
@@ -1848,7 +1896,9 @@ function renderRated() {
       return (ma.title || '').localeCompare(mb.title || '', 'tr');
     }
     if (sortMode === 'rating_desc') {
-      const diff = (mb.score || 0) - (ma.score || 0);
+      const scoreA = (OMDB_KEY && ma.imdb) ? parseFloat(ma.imdb) : (ma.score || 0);
+      const scoreB = (OMDB_KEY && mb.imdb) ? parseFloat(mb.imdb) : (mb.score || 0);
+      const diff = scoreB - scoreA;
       if (diff !== 0) return diff;
       return (ma.title || '').localeCompare(mb.title || '', 'tr');
     }
@@ -1877,8 +1927,12 @@ function renderRated() {
         onclick="updateRating('${key}',${n},this.closest('.star-row'))">${n <= rating ? '★' : '☆'}</span>`;
     }).join('');
 
-    const scoreBit = meta.score > 0
-      ? `<span class="rated-imdb" title="TMDB Puanı">TMDB ${meta.score.toFixed(1)}</span>` : '';
+    let scoreBit = '';
+    if (OMDB_KEY && meta.imdb) {
+      scoreBit = `<span class="rated-imdb" title="IMDb Puanı">IMDb ${meta.imdb}</span>`;
+    } else if (meta.score > 0) {
+      scoreBit = `<span class="rated-imdb" style="background:rgba(1,180,228,.12);color:#01b4e4;border:1px solid rgba(1,180,228,.25)" title="TMDB Puanı">TMDB ${meta.score.toFixed(1)}</span>`;
+    }
 
     el.innerHTML = `
       ${thumb}
@@ -2012,10 +2066,10 @@ function getFilteredRecommendations() {
     filtered = filtered.filter(i => i.original_language === 'tr' || (i.origin_country && i.origin_country.includes('TR')));
   }
   if (recMinRating) {
-    filtered = filtered.filter(i => (i.vote_average || 0) >= recMinRating);
+    filtered = filtered.filter(i => getItemScoreInfo(i).score >= recMinRating);
   }
   if (recSortMode === 'rating') {
-    filtered.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+    filtered.sort((a, b) => getItemScoreInfo(b).score - getItemScoreInfo(a).score);
   } else {
     filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }
@@ -2038,6 +2092,20 @@ async function updateRecGenreChips() {
     const isActive = recSelectedGenres.includes(parseInt(gid));
     chipRow.innerHTML += `<span class="bar-chip ${isActive ? 'active' : ''}" onclick="setRecGenre(this, '${gid}')">${name}</span>`;
   });
+}
+
+async function prefetchImdbForRecommendations(items) {
+  if (!OMDB_KEY || !items || !items.length) return;
+  const missing = items.filter(i => {
+    const key = `${i._type}_${i.id}`;
+    return !metaCache[key]?.imdb;
+  }).slice(0, 15);
+
+  if (!missing.length) return;
+  for (let i = 0; i < missing.length; i += 3) {
+    const chunk = missing.slice(i, i + 3);
+    await Promise.all(chunk.map(item => fetchImdbForCard(item.id, item._type, `${item._type}_${item.id}`)));
+  }
 }
 
 async function fetchRecommendationsFromSeeds(count = 3) {
@@ -2130,6 +2198,9 @@ async function fetchRecommendationsFromSeeds(count = 3) {
     } catch {}
   }
 
+  if (OMDB_KEY && newItems.length) {
+    await prefetchImdbForRecommendations(newItems);
+  }
   allRecommendations.push(...newItems);
   isLoadingRecs = false;
   return newItems.length;
@@ -2199,6 +2270,9 @@ async function fetchTurkishRecommendations() {
     console.warn("fetchTurkishRecommendations error:", e);
   }
 
+  if (OMDB_KEY && newItems.length) {
+    await prefetchImdbForRecommendations(newItems);
+  }
   allRecommendations.push(...newItems);
   isLoadingRecs = false;
   return newItems.length;
