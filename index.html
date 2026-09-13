@@ -119,12 +119,49 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
 .stat-l{font-size:11px;color:var(--muted);margin-top:2px}
 
 /* FILTER / SORT BAR */
-.filter-sort-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-.bar-label{font-size:12px;color:var(--muted);flex-shrink:0}
-.bar-chips{display:flex;gap:5px}
-.bar-chip{padding:4px 11px;border-radius:50px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;user-select:none;font-family:var(--sans)}
+.filter-sort-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.bar-label{font-size:12px;color:var(--muted);flex-shrink:0;font-weight:500}
+.bar-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bar-chip{
+  padding:5px 13px;
+  border-radius:50px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--muted);
+  font-size:12px;
+  cursor:pointer;
+  transition:all .15s;
+  user-select:none;
+  font-family:var(--sans);
+  white-space:nowrap;
+  flex-shrink:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1.2;
+}
 .bar-chip.active{border-color:var(--accent2);color:var(--accent2);background:rgba(124,106,240,.08)}
-.bar-divider{width:1px;height:16px;background:var(--border);margin:0 4px}
+.bar-chip:hover:not(.active){border-color:rgba(255,255,255,.2);color:var(--text)}
+.bar-divider{width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0}
+
+/* REC FILTER & GENRES SPECIFIC */
+.rec-filter-container{margin-bottom:18px;display:flex;flex-direction:column;gap:10px}
+.rec-genre-row{display:flex;gap:10px;align-items:center;width:100%}
+.rec-genre-chips{
+  display:flex;
+  gap:6px;
+  flex:1;
+  min-width:0;
+  overflow-x:auto;
+  white-space:nowrap;
+  padding:4px 2px 6px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+  -webkit-overflow-scrolling:touch;
+}
+.rec-genre-chips::-webkit-scrollbar{height:4px}
+.rec-genre-chips::-webkit-scrollbar-track{background:transparent}
+.rec-genre-chips::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 
 /* RATED LIST */
 .rated-list{display:flex;flex-direction:column;gap:7px}
@@ -400,25 +437,28 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   <div id="page-recommendations" class="page">
     <div class="section-title" style="margin-bottom:22px">Senin İçin Öneriler</div>
     
-    <div class="filter-sort-bar" id="recFilterBar">
-      <span class="bar-label">Tür:</span>
-      <div class="bar-chips" id="recGenreChips"></div>
-      <div class="bar-divider"></div>
-      <span class="bar-label">İçerik:</span>
-      <div class="bar-chips">
-        <span class="bar-chip active" data-rec-type="" onclick="setRecType(this, '')">Tümü</span>
-        <span class="bar-chip" data-rec-type="movie" onclick="setRecType(this, 'movie')">🎬 Film</span>
-        <span class="bar-chip" data-rec-type="tv" onclick="setRecType(this, 'tv')">📺 Dizi</span>
-        <span class="bar-chip" data-rec-type="tr" onclick="setRecType(this, 'tr')">🇹🇷 Türk</span>
+    <div class="rec-filter-container" id="recFilterBar">
+      <div class="filter-sort-bar" style="margin-bottom:0">
+        <span class="bar-label">İçerik:</span>
+        <div class="bar-chips">
+          <span class="bar-chip active" data-rec-type="" onclick="setRecType(this, '')">Tümü</span>
+          <span class="bar-chip" data-rec-type="movie" onclick="setRecType(this, 'movie')">🎬 Film</span>
+          <span class="bar-chip" data-rec-type="tv" onclick="setRecType(this, 'tv')">📺 Dizi</span>
+          <span class="bar-chip" data-rec-type="tr" onclick="setRecType(this, 'tr')">🇹🇷 Türk</span>
+        </div>
+        <div class="bar-divider"></div>
+        <span class="bar-label">Min. Puan: <span id="recMinRatingVal">0</span></span>
+        <input type="range" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('recMinRatingVal').textContent = this.value; applyRecFilters()">
+        <div class="bar-divider"></div>
+        <span class="bar-label">Sırala:</span>
+        <div class="bar-chips">
+          <span class="bar-chip active" data-rec-sort="popularity" onclick="setRecSort(this, 'popularity')">Popülerlik</span>
+          <span class="bar-chip"        data-rec-sort="rating" onclick="setRecSort(this, 'rating')">Puan</span>
+        </div>
       </div>
-      <div class="bar-divider"></div>
-      <span class="bar-label">Min. Puan: <span id="recMinRatingVal">0</span></span>
-      <input type="range" id="recMinRating" value="0" min="0" max="10" step="0.5" style="width:100px" oninput="document.getElementById('recMinRatingVal').textContent = this.value; applyRecFilters()">
-      <div class="bar-divider"></div>
-      <span class="bar-label">Sırala:</span>
-      <div class="bar-chips">
-        <span class="bar-chip active" data-rec-sort="popularity" onclick="setRecSort(this, 'popularity')">Popülerlik</span>
-        <span class="bar-chip"        data-rec-sort="rating" onclick="setRecSort(this, 'rating')">Puan</span>
+      <div class="rec-genre-row">
+        <span class="bar-label">Tür:</span>
+        <div class="rec-genre-chips" id="recGenreChips"></div>
       </div>
     </div>
     
