@@ -312,6 +312,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
   .detail-actions{gap:5px}
   .btn{padding:8px 13px;font-size:12px}
   .preview-tooltip{display:none!important}
+  .toast{bottom:76px}
 }
 </style>
 </head>
@@ -588,6 +589,7 @@ function saveAll() {
 document.addEventListener('DOMContentLoaded', () => {
     initNav();
     buildFilterGenres();
+    setupInfiniteScroll();
     if (!TMDB_KEY) { openModal('apikeyModal'); } else { loadDiscover(); }
     
     // Back to top scroll listener
@@ -608,22 +610,28 @@ if (!ls('cookies_accepted')) {
 }
 
 // ══ INFINITE SCROLL ══
-const observer = new IntersectionObserver((entries) => {
-  if (entries[0].isIntersecting) {
-    if (activePage === 'discover') {
-      if (document.getElementById('loadMoreBtn')?.classList.contains('visible')) {
-        loadMore();
-      }
-    } else if (activePage === 'recommendations') {
-      loadMoreRecommendations();
-    }
-  }
-}, { threshold: 0.1 });
+let isLoadingDiscover = false;
 
-setTimeout(() => {
-  observer.observe(document.getElementById('scrollTrigger'));
-  observer.observe(document.getElementById('recScrollTrigger'));
-}, 1000);
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      if (entry.target.id === 'scrollTrigger' && activePage === 'discover') {
+        if (!isLoadingDiscover && currentPage < totalPages) {
+          loadMore();
+        }
+      } else if (entry.target.id === 'recScrollTrigger' && activePage === 'recommendations') {
+        loadMoreRecommendations();
+      }
+    }
+  });
+}, { rootMargin: '350px', threshold: 0 });
+
+function setupInfiniteScroll() {
+  const t1 = document.getElementById('scrollTrigger');
+  if (t1) observer.observe(t1);
+  const t2 = document.getElementById('recScrollTrigger');
+  if (t2) observer.observe(t2);
+}
 
 // ══ CACHE ══
 async function getGenres() {
@@ -806,6 +814,7 @@ function initNav() {
       if (page === 'recommendations') loadRecommendations();
       if (page === 'watchlist')       renderWatchlist();
       if (page === 'rated')           renderRated();
+      if (page === 'discover' || page === 'recommendations') setupInfiniteScroll();
     });
   });
 }
@@ -892,6 +901,9 @@ async function loadDiscover(append = false, _retries = 0) {
   const grid    = document.getElementById('discoverGrid');
   const titleEl = document.getElementById('discoverTitle');
   
+  if (isLoadingDiscover && append && _retries === 0) return;
+  isLoadingDiscover = true;
+
   if (searchController) searchController.abort();
   searchController = new AbortController();
 
@@ -1029,7 +1041,7 @@ async function loadDiscover(append = false, _retries = 0) {
     }
 
     if (!items.length) {
-      if (append && _retries < 5 && currentPage < Math.min(totalPages, 10)) {
+      if (append && _retries < 5 && currentPage < Math.min(totalPages, 500)) {
         // This page had only already-seen items, try the next one
         currentPage++;
         await loadDiscover(true, _retries + 1);
@@ -1050,7 +1062,11 @@ async function loadDiscover(append = false, _retries = 0) {
       grid.appendChild(el);
     });
 
-    if (currentPage < Math.min(totalPages, 10)) moreBtn.classList.add('visible');
+    if (currentPage < Math.min(totalPages, 500)) {
+      moreBtn.classList.add('visible');
+    } else {
+      moreBtn.classList.remove('visible');
+    }
 
   } catch (e) {
     if (e.name === 'AbortError') return;
@@ -1060,10 +1076,14 @@ async function loadDiscover(append = false, _retries = 0) {
     } else {
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><h3>Yüklenemedi</h3><p>API hatası: ' + esc(e.message) + '</p></div>';
     }
+  } finally {
+    isLoadingDiscover = false;
   }
 }
 
 function loadMore() {
+  if (isLoadingDiscover) return;
+  if (currentPage >= totalPages) return;
   currentPage++;
   loadDiscover(true, 0);
 }
