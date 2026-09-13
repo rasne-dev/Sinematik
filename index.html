@@ -344,6 +344,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
           <button class="type-btn active" onclick="setType('all',this)">🌍 Tümü</button>
           <button class="type-btn" onclick="setType('movie',this)">🎬 Film</button>
           <button class="type-btn" onclick="setType('tv',this)">📺 Dizi</button>
+          <button class="type-btn" onclick="setType('tr',this)">🇹🇷 Türk</button>
         </div>
         <div class="search-field">
           <input class="search-input" id="searchInput" placeholder="Ara..."
@@ -383,6 +384,7 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
         <span class="bar-chip active" data-rec-type="" onclick="setRecType(this, '')">Tümü</span>
         <span class="bar-chip" data-rec-type="movie" onclick="setRecType(this, 'movie')">🎬 Film</span>
         <span class="bar-chip" data-rec-type="tv" onclick="setRecType(this, 'tv')">📺 Dizi</span>
+        <span class="bar-chip" data-rec-type="tr" onclick="setRecType(this, 'tr')">🇹🇷 Türk</span>
       </div>
       <div class="bar-divider"></div>
       <span class="bar-label">Min. Puan: <span id="recMinRatingVal">0</span></span>
@@ -412,9 +414,10 @@ main{max-width:1200px;margin:0 auto;padding:32px 24px 70px;position:relative;z-i
     <div class="filter-sort-bar">
       <span class="bar-label">Tür:</span>
       <div class="bar-chips">
-        <span class="bar-chip active" data-type-filter="all"  onclick="setTypeFilter(this)">Tümü</span>
-        <span class="bar-chip"       data-type-filter="movie" onclick="setTypeFilter(this)">🎬 Film</span>
-        <span class="bar-chip"       data-type-filter="tv"    onclick="setTypeFilter(this)">📺 Dizi</span>
+        <span class="bar-chip active" data-type-filter="all"   onclick="setTypeFilter(this)">Tümü</span>
+        <span class="bar-chip"        data-type-filter="movie" onclick="setTypeFilter(this)">🎬 Film</span>
+        <span class="bar-chip"        data-type-filter="tv"    onclick="setTypeFilter(this)">📺 Dizi</span>
+        <span class="bar-chip"        data-type-filter="tr"    onclick="setTypeFilter(this)">🇹🇷 Türk</span>
       </div>
       <div class="bar-divider"></div>
       <span class="bar-label">Sırala:</span>
@@ -659,6 +662,27 @@ let OMDB_KEY  = ls('fo_omdb')   || '';
 let ratings   = lsJSON('fo_ratings', {});
 let watchlist = lsJSON('fo_watch',   {});
 let metaCache = lsJSON('fo_meta',    {});
+
+// Ratings veri migrasyonu: eski sayı formatındaki veya tarihi eksik kayıtları düzelt
+let ratingsMigrated = false;
+const rKeys = Object.keys(ratings);
+rKeys.forEach((k, idx) => {
+  const v = ratings[k];
+  if (typeof v === 'number') {
+    ratings[k] = { r: v, d: Date.now() - (rKeys.length - idx) * 1000 };
+    ratingsMigrated = true;
+  } else if (v && typeof v === 'object') {
+    if (typeof v.r !== 'number') {
+      v.r = Number(v.r) || 0;
+      ratingsMigrated = true;
+    }
+    if (!v.d || typeof v.d !== 'number') {
+      v.d = Date.now() - (rKeys.length - idx) * 1000;
+      ratingsMigrated = true;
+    }
+  }
+});
+if (ratingsMigrated) saveAll();
 
 let currentType   = 'all';
 let currentGenre  = '';
@@ -962,13 +986,33 @@ async function loadDiscover(append = false, _retries = 0) {
 
     if (currentSearch) {
       params.query = currentSearch;
-      const path = currentType === 'all' ? '/search/multi' : `/search/${currentType}`;
-      data = await tmdb(path, params, searchController.signal);
-      titleEl.innerHTML = `"${esc(currentSearch)}" <small>${data.total_results || 0} sonuç</small>`;
+      if (currentType === 'tr') {
+        data = await tmdb('/search/multi', params, searchController.signal);
+        const trMatches = (data.results || []).filter(i => i.original_language === 'tr');
+        if (trMatches.length) data.results = trMatches;
+        titleEl.innerHTML = `"${esc(currentSearch)}" <small>Türk Yapımları (${data.results.length} sonuç)</small>`;
+      } else {
+        const path = currentType === 'all' ? '/search/multi' : `/search/${currentType}`;
+        data = await tmdb(path, params, searchController.signal);
+        titleEl.innerHTML = `"${esc(currentSearch)}" <small>${data.total_results || 0} sonuç</small>`;
+      }
     } else {
       if (currentType === 'all') {
         data = await tmdb('/trending/all/day', { page: currentPage }, searchController.signal);
         titleEl.innerHTML = `Günün Trendleri <small>Film & Dizi Karışık</small>`;
+      } else if (currentType === 'tr') {
+        const mParams = { ...params, with_original_language: 'tr', sort_by: 'popularity.desc', 'vote_count.gte': 8 };
+        const tParams = { ...params, with_original_language: 'tr', sort_by: 'popularity.desc', 'vote_count.gte': 8 };
+        const [mRes, tRes] = await Promise.all([
+          tmdb('/discover/movie', mParams, searchController.signal).catch(() => ({ results: [], total_pages: 1 })),
+          tmdb('/discover/tv', tParams, searchController.signal).catch(() => ({ results: [], total_pages: 1 }))
+        ]);
+        totalPages = Math.max(mRes.total_pages || 1, tRes.total_pages || 1);
+        const mItems = (mRes.results || []).map(i => ({ ...i, media_type: 'movie' }));
+        const tItems = (tRes.results || []).map(i => ({ ...i, media_type: 'tv' }));
+        const combined = [...mItems, ...tItems].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+        data = { results: combined, total_pages: totalPages };
+        titleEl.innerHTML = `🇹🇷 Popüler Türk Dizi & Filmleri <small></small>`;
       } else {
         // Provide variety when no specific search is active
         const sorts = [
@@ -1094,20 +1138,21 @@ function loadMore() {
 // karakterler geçtiğinde inline onclick'in bozulmasını önler).
 const itemStore = new Map();
 
-function makeCard(item, type) {
+function makeCard(item, type, reason = null) {
   const title = item.title || item.name || '—';
   const year  = (item.release_date || item.first_air_date || '').slice(0, 4);
   const key   = `${type}_${item.id}`;
   const myR   = getRatingValue(key);
   const inW   = !!watchlist[key];
   const resolvedType = item.media_type === 'tv' ? 'tv' : type;
+  const effectiveReason = reason || item._reason || null;
 
   itemStore.set(key, { item, type: resolvedType });
 
   const el       = document.createElement('div');
   el.className   = 'card';
   el.dataset.key = key;
-  el.onclick     = () => openDetail(item, resolvedType);
+  el.onclick     = () => openDetail(item, resolvedType, effectiveReason);
 
   let hoverTimer;
   el.addEventListener('mouseenter', () => {
@@ -1233,12 +1278,13 @@ function hidePreview() {
 // ══ DETAIL MODAL ══
 function getRatingValue(key) {
   const r = ratings[key];
-  if (typeof r === 'object' && r !== null) return r.r;
-  return r || 0;
+  if (typeof r === 'object' && r !== null && typeof r.r === 'number') return r.r;
+  if (typeof r === 'number') return r;
+  return 0;
 }
 function getRatingDate(key) {
   const r = ratings[key];
-  if (typeof r === 'object' && r !== null) return r.d || 0;
+  if (typeof r === 'object' && r !== null && typeof r.d === 'number') return r.d;
   return 0;
 }
 
@@ -1441,6 +1487,7 @@ function clickD(n) {
       year:   (item.release_date || item.first_air_date || '').slice(0, 4),
       score:  item.vote_average,
       type,
+      original_language: item.original_language || '',
     };
     if (watchlist[key]) delete watchlist[key];
     toast(`★ ${n}/10 kaydedildi`);
@@ -1606,21 +1653,41 @@ function renderRated() {
 
   let keys = allKeys;
   if (typeFilter === 'movie') keys = allKeys.filter(k => k.startsWith('movie_'));
-  if (typeFilter === 'tv')    keys = allKeys.filter(k => k.startsWith('tv_'));
+  else if (typeFilter === 'tv') keys = allKeys.filter(k => k.startsWith('tv_'));
+  else if (typeFilter === 'tr') {
+    keys = allKeys.filter(k => {
+      const m = metaCache[k];
+      return m && (m.original_language === 'tr' || m.isTr);
+    });
+  }
 
   if (!keys.length) {
-    const msg = typeFilter === 'all'
-      ? '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>'
-      : `<div class="empty"><div class="empty-icon">${typeFilter === 'movie' ? '🎬' : '📺'}</div><h3>Bu türde puanlanan içerik yok</h3></div>`;
+    let msg = '<div class="empty"><div class="empty-icon">⭐</div><h3>Henüz puanlama yok</h3><p>Keşfet sekmesinden bir film ya da dizi aç ve puanla.</p></div>';
+    if (typeFilter === 'movie') msg = '<div class="empty"><div class="empty-icon">🎬</div><h3>Puanlanan film yok</h3></div>';
+    if (typeFilter === 'tv') msg = '<div class="empty"><div class="empty-icon">📺</div><h3>Puanlanan dizi yok</h3></div>';
+    if (typeFilter === 'tr') msg = '<div class="empty"><div class="empty-icon">🇹🇷</div><h3>Puanlanan Türk yapımı yok</h3></div>';
     list.innerHTML = msg;
     return;
   }
 
   const sorted = [...keys].sort((a, b) => {
     const ma = metaCache[a] || {}, mb = metaCache[b] || {};
-    if (sortMode === 'date')   return getRatingDate(b) - getRatingDate(a);
-    if (sortMode === 'rating') return getRatingValue(b) - getRatingValue(a);
-    if (sortMode === 'rating_desc') return (mb.score || 0) - (ma.score || 0);
+    if (sortMode === 'date') {
+      const db = getRatingDate(b);
+      const da = getRatingDate(a);
+      if (db !== da) return db - da;
+      return (ma.title || '').localeCompare(mb.title || '', 'tr');
+    }
+    if (sortMode === 'rating') {
+      const diff = getRatingValue(b) - getRatingValue(a);
+      if (diff !== 0) return diff;
+      return (ma.title || '').localeCompare(mb.title || '', 'tr');
+    }
+    if (sortMode === 'rating_desc') {
+      const diff = (mb.score || 0) - (ma.score || 0);
+      if (diff !== 0) return diff;
+      return (ma.title || '').localeCompare(mb.title || '', 'tr');
+    }
     if (sortMode === 'alpha')  return (ma.title || '').localeCompare(mb.title || '', 'tr');
     if (sortMode === 'year')   return (mb.year  || '0').localeCompare(ma.year  || '0');
     return 0;
@@ -1694,12 +1761,18 @@ function deleteRating(key) {
 
 // ══ RECOMMENDATIONS ══
 let recSelectedGenres = [];
-let recTypeFilter  = '';
-let recMinRating   = 0;
-let recSortMode    = 'popularity';
+let recTypeFilter     = ''; // '' | 'movie' | 'tv' | 'tr'
+let recMinRating      = 0;
+let recSortMode       = 'popularity';
 let allRecommendations = [];
 let displayedRecsCount = 0;
-const RECS_PER_PAGE = 12;
+const RECS_PER_PAGE   = 12;
+let isLoadingRecs     = false;
+let recSeeds          = [];
+let recSeedIndex      = 0;
+let recDiscoveredTrPage = 1;
+let recDiscoveredGeneralPage = 1;
+let userTopGenreIds   = [];
 
 function setRecGenre(el, genreId) {
   if (genreId === '') {
@@ -1707,29 +1780,40 @@ function setRecGenre(el, genreId) {
     document.querySelectorAll('#recGenreChips .bar-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
   } else {
-    document.querySelector('#recGenreChips .bar-chip[onclick*="\'\'"]').classList.remove('active');
-    const idx = recSelectedGenres.indexOf(parseInt(genreId));
+    document.querySelector('#recGenreChips .bar-chip[onclick*="\'\'"]')?.classList.remove('active');
+    const gid = parseInt(genreId);
+    const idx = recSelectedGenres.indexOf(gid);
     if (idx > -1) {
       recSelectedGenres.splice(idx, 1);
       el.classList.remove('active');
     } else {
-      recSelectedGenres.push(parseInt(genreId));
+      recSelectedGenres.push(gid);
       el.classList.add('active');
     }
     if (recSelectedGenres.length === 0) {
-      document.querySelector('#recGenreChips .bar-chip[onclick*="\'\'"]').classList.add('active');
+      document.querySelector('#recGenreChips .bar-chip[onclick*="\'\'"]')?.classList.add('active');
     }
   }
   displayedRecsCount = RECS_PER_PAGE;
-  renderRecommendations();
+  renderRecommendations(false);
 }
 
-function setRecType(el, type) {
+async function setRecType(el, type) {
   document.querySelectorAll('#recFilterBar [data-rec-type]').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   recTypeFilter = type;
   displayedRecsCount = RECS_PER_PAGE;
-  renderRecommendations();
+
+  if (type === 'tr') {
+    const trCount = allRecommendations.filter(i => i.original_language === 'tr' || (i.origin_country && i.origin_country.includes('TR'))).length;
+    if (trCount < 12) {
+      const cnt = document.getElementById('recContent');
+      cnt.innerHTML = '<div class="loading"><div class="spinner"></div>🇹🇷 Sana özel Türk yapımları getiriliyor...</div>';
+      await fetchTurkishRecommendations();
+      await updateRecGenreChips();
+    }
+  }
+  renderRecommendations(false);
 }
 
 function setRecSort(el, mode) {
@@ -1737,13 +1821,203 @@ function setRecSort(el, mode) {
   el.classList.add('active');
   recSortMode = mode;
   displayedRecsCount = RECS_PER_PAGE;
-  renderRecommendations();
+  renderRecommendations(false);
 }
 
 function applyRecFilters() {
   recMinRating = parseFloat(document.getElementById('recMinRating').value) || 0;
   displayedRecsCount = RECS_PER_PAGE;
-  renderRecommendations();
+  renderRecommendations(false);
+}
+
+function getFilteredRecommendations() {
+  let filtered = allRecommendations;
+  if (recSelectedGenres.length > 0) {
+    filtered = filtered.filter(i => i.genre_ids && recSelectedGenres.some(gid => i.genre_ids.includes(gid)));
+  }
+  if (recTypeFilter === 'movie' || recTypeFilter === 'tv') {
+    filtered = filtered.filter(i => i._type === recTypeFilter);
+  } else if (recTypeFilter === 'tr') {
+    filtered = filtered.filter(i => i.original_language === 'tr' || (i.origin_country && i.origin_country.includes('TR')));
+  }
+  if (recMinRating) {
+    filtered = filtered.filter(i => (i.vote_average || 0) >= recMinRating);
+  }
+  if (recSortMode === 'rating') {
+    filtered.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+  } else {
+    filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  }
+  return filtered;
+}
+
+async function updateRecGenreChips() {
+  const chipRow = document.getElementById('recGenreChips');
+  if (!chipRow) return;
+  const genreMap = new Map(Object.entries(await getGenres()));
+  const uniqueIds = Array.from(new Set(allRecommendations.flatMap(i => i.genre_ids || []))).filter(Boolean);
+
+  uniqueIds.sort((a, b) => {
+    return (genreMap.get(String(a)) || '').localeCompare(genreMap.get(String(b)) || '', 'tr');
+  });
+
+  chipRow.innerHTML = `<span class="bar-chip ${recSelectedGenres.length === 0 ? 'active' : ''}" onclick="setRecGenre(this, '')">Tümü</span>`;
+  uniqueIds.forEach(gid => {
+    const name = genreMap.get(String(gid)) || 'Tür ' + gid;
+    const isActive = recSelectedGenres.includes(parseInt(gid));
+    chipRow.innerHTML += `<span class="bar-chip ${isActive ? 'active' : ''}" onclick="setRecGenre(this, '${gid}')">${name}</span>`;
+  });
+}
+
+async function fetchRecommendationsFromSeeds(count = 3) {
+  if (isLoadingRecs) return 0;
+  isLoadingRecs = true;
+
+  const ratedKeys = Object.keys(ratings);
+  const ratedIds = new Set(ratedKeys.map(k => k.split('_').slice(1).join('')));
+  const watchKeys = Object.keys(watchlist);
+  const watchIds = new Set(watchKeys.map(k => k.split('_').slice(1).join('')));
+  const existingRecIds = new Set(allRecommendations.map(i => i.id));
+
+  const sixMonthsLater = new Date();
+  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+  const maxFutureDate = sixMonthsLater.toISOString().split('T')[0];
+
+  let newItems = [];
+  const seedsToProcess = recSeeds.slice(recSeedIndex, recSeedIndex + count);
+  recSeedIndex += seedsToProcess.length;
+
+  for (const key of seedsToProcess) {
+    const parts = key.split('_');
+    const type  = parts[0];
+    const id    = parts.slice(1).join('_');
+    const meta  = metaCache[key] || {};
+    const title = meta.title || 'sevdiğin bir içerik';
+
+    try {
+      const [recData, simData] = await Promise.all([
+        tmdb(`/${type}/${id}/recommendations`).catch(() => ({ results: [] })),
+        tmdb(`/${type}/${id}/similar`).catch(() => ({ results: [] }))
+      ]);
+
+      const candidates = [...(recData.results || []), ...(simData.results || [])];
+      for (const r of candidates) {
+        if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id))) continue;
+        if (!r.poster_path) continue;
+
+        const isTr = r.original_language === 'tr' || (r.origin_country && r.origin_country.includes('TR'));
+        const minVotes = isTr ? 10 : 25;
+        if ((r.vote_count || 0) < minVotes) continue;
+
+        const releaseDate = r.release_date || r.first_air_date || '0000';
+        if (releaseDate > maxFutureDate && releaseDate !== '0000') continue;
+
+        existingRecIds.add(r.id);
+        newItems.push({
+          ...r,
+          _type: type,
+          _reason: `"${title}" beğendiğin için`
+        });
+      }
+    } catch (e) {
+      console.warn("Rec fetch error for seed:", key, e);
+    }
+  }
+
+  // If seeds exhausted or yielded few items, fetch discover items matching user's top genres!
+  if (newItems.length < 6 && userTopGenreIds.length > 0 && recDiscoveredGeneralPage <= 10) {
+    try {
+      const gParams = {
+        page: recDiscoveredGeneralPage++,
+        with_genres: userTopGenreIds.slice(0, 2).join(','),
+        sort_by: 'vote_average.desc',
+        'vote_count.gte': 150,
+        include_adult: !nsfwFilter
+      };
+      const [mRes, tRes] = await Promise.all([
+        tmdb('/discover/movie', gParams).catch(() => ({ results: [] })),
+        tmdb('/discover/tv', gParams).catch(() => ({ results: [] }))
+      ]);
+      const genreCandidates = [
+        ...(mRes.results || []).map(i => ({ ...i, _type: 'movie' })),
+        ...(tRes.results || []).map(i => ({ ...i, _type: 'tv' }))
+      ];
+      for (const r of genreCandidates) {
+        if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id))) continue;
+        if (!r.poster_path) continue;
+        existingRecIds.add(r.id);
+        newItems.push({
+          ...r,
+          _reason: 'Sevdiğin türlerde öne çıkan içerik'
+        });
+      }
+    } catch {}
+  }
+
+  allRecommendations.push(...newItems);
+  isLoadingRecs = false;
+  return newItems.length;
+}
+
+async function fetchTurkishRecommendations() {
+  if (isLoadingRecs) return 0;
+  isLoadingRecs = true;
+
+  const ratedKeys = Object.keys(ratings);
+  const ratedIds = new Set(ratedKeys.map(k => k.split('_').slice(1).join('')));
+  const watchKeys = Object.keys(watchlist);
+  const watchIds = new Set(watchKeys.map(k => k.split('_').slice(1).join('')));
+  const existingRecIds = new Set(allRecommendations.map(i => i.id));
+
+  let newItems = [];
+  try {
+    const page = recDiscoveredTrPage++;
+    const movieParams = {
+      page,
+      with_original_language: 'tr',
+      sort_by: page % 2 === 1 ? 'popularity.desc' : 'vote_average.desc',
+      'vote_count.gte': 10,
+      include_adult: !nsfwFilter
+    };
+    const tvParams = {
+      page,
+      with_original_language: 'tr',
+      sort_by: page % 2 === 1 ? 'popularity.desc' : 'vote_average.desc',
+      'vote_count.gte': 10,
+      include_adult: !nsfwFilter
+    };
+
+    if (userTopGenreIds.length > 0 && page % 2 === 0) {
+      movieParams.with_genres = userTopGenreIds[0];
+      tvParams.with_genres = userTopGenreIds[0];
+    }
+
+    const [mRes, tRes] = await Promise.all([
+      tmdb('/discover/movie', movieParams).catch(() => ({ results: [] })),
+      tmdb('/discover/tv', tvParams).catch(() => ({ results: [] }))
+    ]);
+
+    const candidates = [
+      ...(mRes.results || []).map(i => ({ ...i, _type: 'movie' })),
+      ...(tRes.results || []).map(i => ({ ...i, _type: 'tv' }))
+    ];
+
+    for (const r of candidates) {
+      if (!r.id || existingRecIds.has(r.id) || ratedIds.has(String(r.id)) || watchIds.has(String(r.id))) continue;
+      if (!r.poster_path) continue;
+      existingRecIds.add(r.id);
+      newItems.push({
+        ...r,
+        _reason: '🇹🇷 Sevilen Türk Yapımı'
+      });
+    }
+  } catch (e) {
+    console.warn("fetchTurkishRecommendations error:", e);
+  }
+
+  allRecommendations.push(...newItems);
+  isLoadingRecs = false;
+  return newItems.length;
 }
 
 async function loadRecommendations() {
@@ -1755,106 +2029,113 @@ async function loadRecommendations() {
     return;
   }
 
-  cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
-  displayedRecsCount = RECS_PER_PAGE;
-  
-  const ratedIds = new Set(keys.map(k => k.split('_').slice(1).join('')));
-  let topRated = [...keys]
-    .filter(k => getRatingValue(k) >= 7 && !k.includes('_imdb_'));
-  
-  if (!topRated.length) {
+  const eligibleSeeds = keys.filter(k => getRatingValue(k) >= 7 && !k.includes('_imdb_'));
+  if (!eligibleSeeds.length) {
     cnt.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><h3>Daha yüksek puan gerekiyor</h3><p>Öneri alabilmek için en az bir içeriği 7 veya üzeri puanla.</p></div>';
     return;
   }
 
-  // Shuffle and pick 3 to get different recommendations each time
-  topRated = topRated.sort(() => Math.random() - 0.5).slice(0, 3);
+  cnt.innerHTML = '<div class="loading"><div class="spinner"></div>Öneriler hazırlanıyor...</div>';
+  displayedRecsCount = RECS_PER_PAGE;
+  allRecommendations = [];
+  recSeedIndex = 0;
+  recDiscoveredTrPage = 1;
+  recDiscoveredGeneralPage = 1;
 
-  let fetchedItems = [];
-  const genreMap = new Map(Object.entries(await getGenres()));
+  recSeeds = [...eligibleSeeds].sort((a, b) => {
+    const rDiff = getRatingValue(b) - getRatingValue(a);
+    if (rDiff !== 0) return rDiff;
+    const sa = (metaCache[a]?.score || 0);
+    const sb = (metaCache[b]?.score || 0);
+    return sb - sa;
+  });
 
-  for (const key of topRated) {
-    const parts = key.split('_');
-    const type  = parts[0];
-    const id    = parts.slice(1).join('_');
-    const title = metaCache[key]?.title || 'sevdiğin bir içerik';
+  // Extract top genres from user rated items
+  const genreCount = {};
+  for (const k of recSeeds.slice(0, 10)) {
+    const parts = k.split('_');
+    const type = parts[0];
+    const id = parts.slice(1).join('_');
     try {
-      const recData = await tmdb(`/${type}/${id}/recommendations`);
-      const today = new Date().toISOString().split('T')[0];
-      
-      (recData.results || []).filter(r => {
-        if (ratedIds.has(String(r.id))) return false;
-        if (!r.poster_path) return false;
-        if ((r.vote_count || 0) < 5) return false;
-        const releaseDate = r.release_date || r.first_air_date || '0000';
-        if (releaseDate > today && releaseDate !== '0000') {
-           // Limit future recommendations to 6 months
-           const sixMonthsLater = new Date();
-           sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
-           if (releaseDate > sixMonthsLater.toISOString().split('T')[0]) return false;
-        }
-        return true;
-      }).forEach(item => {
-        fetchedItems.push({ ...item, _type: type, _reason: `"${title}" benzeri` });
+      const details = await tmdb(`/${type}/${id}`);
+      (details.genres || []).forEach(g => {
+        genreCount[g.id] = (genreCount[g.id] || 0) + 1;
       });
     } catch {}
   }
-  
-  allRecommendations = [...new Map(fetchedItems.map(item => [item.id, item])).values()];
-  
-  const chipRow = document.getElementById('recGenreChips');
-  const uniqueIds = Array.from(new Set(allRecommendations.flatMap(i => i.genre_ids || []))).sort((a,b) => {
-    return (genreMap.get(String(a))||'').localeCompare(genreMap.get(String(b))||'');
-  });
+  userTopGenreIds = Object.entries(genreCount)
+    .sort((a, b) => b[1] - a[1])
+    .map(e => e[0]);
 
-  chipRow.innerHTML = `<span class="bar-chip ${recSelectedGenres.length === 0 ? 'active' : ''}" onclick="setRecGenre(this, '')">Tümü</span>`;
-  uniqueIds.forEach(gid => {
-    const name = genreMap.get(String(gid)) || 'Tür ' + gid;
-    const isActive = recSelectedGenres.includes(parseInt(gid));
-    chipRow.innerHTML += `<span class="bar-chip ${isActive ? 'active' : ''}" onclick="setRecGenre(this, '${gid}')">${name}</span>`;
-  });
+  // Initial fetch: 4 seeds + 1 Turkish batch
+  await fetchRecommendationsFromSeeds(4);
+  await fetchTurkishRecommendations();
 
-  renderRecommendations();
+  await updateRecGenreChips();
+  renderRecommendations(false);
 }
 
-function loadMoreRecommendations() {
-  if (displayedRecsCount < allRecommendations.length) {
-    displayedRecsCount += RECS_PER_PAGE;
-    renderRecommendations();
+async function loadMoreRecommendations() {
+  if (isLoadingRecs || activePage !== 'recommendations') return;
+
+  const filtered = getFilteredRecommendations();
+  
+  if (displayedRecsCount < filtered.length) {
+    displayedRecsCount = Math.min(displayedRecsCount + RECS_PER_PAGE, filtered.length);
+    renderRecommendations(true); // Smooth append
+  }
+
+  // If buffer is running low, fetch more items in background!
+  if (displayedRecsCount >= filtered.length - 6) {
+    let added = 0;
+    if (recTypeFilter === 'tr') {
+      added = await fetchTurkishRecommendations();
+    } else {
+      if (recSeedIndex < recSeeds.length) {
+        added = await fetchRecommendationsFromSeeds(3);
+      } else {
+        added = await fetchRecommendationsFromSeeds(0);
+      }
+    }
+    if (added > 0) {
+      await updateRecGenreChips();
+      renderRecommendations(true);
+    }
   }
 }
 
-function renderRecommendations() {
+function renderRecommendations(appendOnly = false) {
   const cnt = document.getElementById('recContent');
-  cnt.style.opacity = '0';
-  
-  let filtered = allRecommendations;
-  if (recSelectedGenres.length > 0) {
-    filtered = filtered.filter(i => i.genre_ids && recSelectedGenres.some(gid => i.genre_ids.includes(gid)));
-  }
-  if (recTypeFilter)  filtered = filtered.filter(i => i._type === recTypeFilter);
-  if (recMinRating)   filtered = filtered.filter(i => i.vote_average >= recMinRating);
-  
-  if (recSortMode === 'rating') filtered.sort((a, b) => b.vote_average - a.vote_average);
-  else filtered.sort((a, b) => b.popularity - a.popularity);
+  const filtered = getFilteredRecommendations();
 
   if (!filtered.length) {
-    cnt.innerHTML = '<div class="empty">Sonuç bulunamadı.</div>';
-    cnt.style.opacity = '1';
+    if (!isLoadingRecs) {
+      cnt.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><h3>Sonuç bulunamadı</h3><p>Farklı bir filtre seçebilir veya Keşfet sekmesinden yeni içerikler puanlayabilirsin.</p></div>';
+      cnt.style.opacity = '1';
+    }
     return;
   }
 
-  const grid = document.createElement('div');
-  grid.className = 'card-grid';
-  filtered.slice(0, displayedRecsCount).forEach(item => {
-    const card = makeCard(item, item._type);
-    card.onclick = () => openDetail(item, item._type, item._reason);
+  let grid = cnt.querySelector('.card-grid');
+  if (!grid || !appendOnly) {
+    cnt.innerHTML = '';
+    grid = document.createElement('div');
+    grid.className = 'card-grid';
+    cnt.appendChild(grid);
+  }
+
+  const existingCount = grid.children.length;
+  const itemsToRender = filtered.slice(appendOnly ? existingCount : 0, displayedRecsCount);
+
+  itemsToRender.forEach((item, idx) => {
+    const card = makeCard(item, item._type, item._reason);
+    if (appendOnly) {
+      card.style.animationDelay = `${(idx % 12) * 25}ms`;
+    }
     grid.appendChild(card);
   });
-  
-  cnt.innerHTML = '';
-  cnt.appendChild(grid);
-  setTimeout(() => cnt.style.opacity = '1', 50);
+
+  cnt.style.opacity = '1';
 }
 
 // ══ IMPORT ══
@@ -1877,10 +2158,11 @@ async function handleFile(file) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const cols  = parseCSVLine(lines[0]);
 
-  const idIdx  = cols.findIndex(c => /const/i.test(c));
-  const ratIdx = cols.findIndex(c => /your.?rating/i.test(c));
-  const titIdx = cols.findIndex(c => /^"?title"?$/i.test(c));
-  const typIdx = cols.findIndex(c => /title.?type/i.test(c));
+  const idIdx   = cols.findIndex(c => /const/i.test(c));
+  const ratIdx  = cols.findIndex(c => /your.?rating/i.test(c));
+  const titIdx  = cols.findIndex(c => /^"?title"?$/i.test(c));
+  const typIdx  = cols.findIndex(c => /title.?type/i.test(c));
+  const dateIdx = cols.findIndex(c => /date.?rated/i.test(c));
 
   if (idIdx === -1 || ratIdx === -1) {
     showImportAlert('err','❌ IMDb CSV formatı tanınamadı. "ratings.csv" dosyasını kullandığından emin ol.');
@@ -1899,13 +2181,22 @@ async function handleFile(file) {
   let done = 0, success = 0, fail = 0;
 
   for (let i = 0; i < rows.length; i += 5) {
-    await Promise.all(rows.slice(i, i+5).map(async row => {
+    await Promise.all(rows.slice(i, i+5).map(async (row, rOffset) => {
       const imdbId  = row[idIdx]?.trim();
       const rating  = parseInt(row[ratIdx]);
       const title   = row[titIdx]?.trim() || '';
       const typeRaw = (row[typIdx] || '').trim();
       if (!imdbId || isNaN(rating) || rating < 1 || rating > 10) { done++; fail++; return; }
       const type = imdbTypeToTmdb(typeRaw);
+
+      let ratedDate = Date.now() - (rows.length - (i + rOffset)) * 1000;
+      if (dateIdx !== -1 && row[dateIdx]) {
+        const parsed = Date.parse(row[dateIdx].trim());
+        if (!isNaN(parsed)) {
+          ratedDate = parsed + (rows.length - (i + rOffset));
+        }
+      }
+
       try {
         const found = await fetch(
           `${BASE}/find/${imdbId}?api_key=${TMDB_KEY}&external_source=imdb_id&language=tr-TR`
@@ -1914,18 +2205,19 @@ async function handleFile(file) {
         if (results.length) {
           const m   = results[0];
           const key = `${type}_${m.id}`;
-          ratings[key]   = { r: rating, d: Date.now() };
+          ratings[key]   = { r: rating, d: ratedDate };
           metaCache[key] = {
             title:  m.title || m.name || title,
             poster: m.poster_path,
             year:   (m.release_date || m.first_air_date || '').slice(0,4),
             score:  m.vote_average || 0,
             type,
+            original_language: m.original_language || '',
           };
         } else {
           const key = `${type}_imdb_${imdbId}`;
-          ratings[key] = { r: rating, d: Date.now() };
-          if (title) metaCache[key] = { title, year:'', poster:null, score:0, type };
+          ratings[key] = { r: rating, d: ratedDate };
+          if (title) metaCache[key] = { title, year:'', poster:null, score:0, type, original_language: '' };
         }
         success++;
       } catch { fail++; }
