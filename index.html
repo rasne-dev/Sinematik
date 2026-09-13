@@ -1286,7 +1286,7 @@ function makeCard(item, type, reason = null) {
     : `<div class="card-ph">🎬</div>`;
 
   const scoreBadge = item.vote_average > 0
-    ? `<div class="badge"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
+    ? `<div class="badge" title="TMDB (The Movie Database) Puanı"><span class="badge-tmdb">TMDB</span>${item.vote_average.toFixed(1)}</div>` : '';
   const imdbBadge = `<div class="badge-imdb-card" id="imdb-card-${key}"></div>`;
   const userBadge = myR ? `<div class="badge-u">★ ${myR}</div>` : '';
   const watchBadge = inW && !myR ? `<div class="badge-w">🕐</div>` : '';
@@ -1314,7 +1314,7 @@ function makeCard(item, type, reason = null) {
     <div class="card-body">
       <div class="card-name" title="${esc(title)}">${esc(title)}</div>
       <div class="card-sub">
-        <span class="card-score">${item.vote_average > 0 ? item.vote_average.toFixed(1) : '—'}</span>
+        <span class="card-score" title="TMDB (The Movie Database) Puanı">⭐ ${item.vote_average > 0 ? item.vote_average.toFixed(1) : '—'} <small style="font-size:9px;color:var(--muted);font-weight:400">TMDB</small></span>
         <span>${year || '—'}</span>
       </div>
     </div>
@@ -1441,7 +1441,7 @@ function openDetail(item, type, reason = null) {
       ${reason ? `<div style="font-size:11px;color:var(--accent);margin-bottom:8px;">★ ${esc(reason)}</div>` : ''}
       <div class="detail-scores" id="detailScores">
         ${item.vote_average > 0
-          ? `<div class="score-pill score-tmdb">
+          ? `<div class="score-pill score-tmdb" title="TMDB (The Movie Database) Kullanıcı Puanı">
                <span class="score-label">TMDB</span>
                <span class="score-val">⭐ ${item.vote_average.toFixed(1)}</span>
              </div>` : ''}
@@ -1568,10 +1568,20 @@ async function fetchDetailExtras(id, type) {
         const pillEl = document.getElementById('imdbScorePill');
         if (pillEl && od?.imdbRating && od.imdbRating !== 'N/A') {
           pillEl.innerHTML = `
-            <div class="score-pill score-imdb">
+            <a class="score-pill score-imdb" href="https://www.imdb.com/title/${imdbId}/" target="_blank" style="text-decoration:none" title="Gerçek IMDb puanı (IMDb'de aç)">
               <span class="score-label">IMDb</span>
               <span class="score-val">⭐ ${od.imdbRating}</span>
-            </div>`;
+            </a>`;
+        }
+      } else {
+        const pillEl = document.getElementById('imdbScorePill');
+        if (pillEl) {
+          pillEl.innerHTML = `
+            <a class="score-pill score-imdb" href="https://www.imdb.com/title/${imdbId}/" target="_blank"
+               style="text-decoration:none;cursor:pointer;" title="Gerçek IMDb puanını IMDb resmi sayfasında gör">
+              <span class="score-label">IMDb</span>
+              <span class="score-val" style="font-size:11px">Puanı Gör ↗</span>
+            </a>`;
         }
       }
     }
